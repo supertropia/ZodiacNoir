@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --scale: 1;
+}
+
+html[data-fontsize="sm"] { --scale: 0.925; }
+html[data-fontsize="md"] { --scale: 1; }
+html[data-fontsize="lg"] { --scale: 1.15; }
+
+html {
+  font-size: calc(16px * var(--scale));
+  scroll-behavior: smooth;
+}
+
+html[data-theme="noir"] body {
+  background: #0B0B0D;
+  color: #EADFC0;
+}
+
+html[data-theme="day"] body {
+  background: #F5F0E4;
+  color: #221F2A;
+}
+
+body {
+  font-family: var(--font-cormorant), serif;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+::selection {
+  background: #C9A24B;
+  color: #0B0B0D;
+}
+
+/* Textura de "velvet" sutil sobre el fondo noir, generada con SVG en línea, sin imágenes externas */
+html[data-theme="noir"] .bg-velvet {
+  background-image:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(201,162,75,0.14), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 92% 105%, rgba(92,34,51,0.22), transparent 60%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px),
+    #0B0B0D;
+}
+
+html[data-theme="day"] .bg-velvet {
+  background-image:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(201,162,75,0.10), transparent 60%),
+    #F5F0E4;
+}
+
+.gold-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #C9A24B, transparent);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #C9A24B;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.twinkle {
+  animation: twinkle 3.2s ease-in-out infinite;
+}
