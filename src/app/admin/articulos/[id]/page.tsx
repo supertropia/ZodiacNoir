@@ -24,7 +24,6 @@ export default async function EditArticlePage({ params }: { params: { id: string
           authorName: article.authorName,
           authorRole: article.authorRole,
           published: article.published,
-          premium: article.premium,
         }}
       />
     </div>

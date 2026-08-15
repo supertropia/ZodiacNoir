@@ -21,11 +21,6 @@ model User {
   createdAt     DateTime  @default(now())
   accounts      Account[]
   sessions      Session[]
-
-  // Membresía (Gumroad)
-  isMember             Boolean   @default(false)
-  membershipLicenseKey String?
-  membershipVerifiedAt DateTime?
 }
 
 model Account {
@@ -74,46 +69,65 @@ model Subscriber {
   confirmedAt      DateTime?
 }
 
-// ---------- Contador de eventos cósmicos (cuenta regresiva configurable) ----------
+// ---------- Monetización (Lemon Squeezy) ----------
 
-model CosmicEvent {
-  id          String   @id @default(cuid())
-  title       String // ej: "Eclipse total de sol en Leo"
-  subtitle    String? // ej: "Prepárate para la próxima fase lunar"
-  description String? // párrafo breve debajo del contador
-  eventDate   DateTime // fecha y hora exacta a la que cuenta regresiva llega a cero
-  articleSlug String? // slug de un artículo del sitio (botón "Ver artículo")
-  guideUrl    String? // enlace externo, ej. a Gumroad (botón "Obtener guía")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// Un plan de membresía (ej. "Mensual", "Anual"). Los precios reales viven en Lemon Squeezy;
+// acá solo guardamos la referencia para armar los botones de compra y mostrar el estado.
+model MembershipPlan {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  description    String
+  priceLabel     String // texto a mostrar, ej. "USD 7/mes"
+  interval       String // "mes" | "año"
+  lemonVariantId String // ID de la variante en Lemon Squeezy
+  featured       Boolean        @default(false)
+  benefits       String // lista separada por "|"
+  createdAt      DateTime       @default(now())
+  subscriptions  Subscription[]
 }
 
-// ---------- Calculadora de carta natal ----------
-
-model NatalChartLead {
-  id          String   @id @default(cuid())
-  email       String
-  name        String?
-  birthDate   String // YYYY-MM-DD tal como lo ingresó la persona
-  birthTime   String // HH:mm
-  birthPlace  String
-  latitude    Float
-  longitude   Float
-  chartSummary String  @db.Text // JSON con el resultado calculado, para reusar en el informe personalizado
-  createdAt   DateTime @default(now())
+// Estado de la membresía paga de una persona, sincronizado vía webhook de Lemon Squeezy.
+model Subscription {
+  id                  String          @id @default(cuid())
+  email               String          @unique
+  status              String // active | on_trial | past_due | cancelled | expired
+  lemonSubscriptionId String          @unique
+  lemonCustomerId     String?
+  renewsAt            DateTime?
+  endsAt              DateTime?
+  plan                MembershipPlan? @relation(fields: [planId], references: [id])
+  planId              String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 }
 
-model PersonalReportRequest {
-  id         String   @id @default(cuid())
-  name       String
-  email      String
-  whatsapp   String?
-  birthDate  String?
-  birthTime  String?
-  birthPlace String?
-  message    String?  @db.Text
-  createdAt  DateTime @default(now())
+// Un producto digital (principalmente PDFs) vendido como pago único.
+model Product {
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  title          String
+  description    String
+  priceLabel     String // texto a mostrar, ej. "USD 9"
+  lemonVariantId String // ID de la variante en Lemon Squeezy
+  coverImage     String?
+  fileUrl        String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
+  published      Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  purchases      Purchase[]
+}
+
+// Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy.
+model Purchase {
+  id           String   @id @default(cuid())
+  email        String
+  product      Product  @relation(fields: [productId], references: [id])
+  productId    String
+  lemonOrderId String   @unique
+  status       String // paid | refunded
+  createdAt    DateTime @default(now())
+
+  @@index([email])
 }
 
 // ---------- Contenido editorial ----------
@@ -131,7 +145,6 @@ model Article {
   authorRole     String
   readingTimeMin Int
   published      Boolean   @default(false)
-  premium        Boolean   @default(false)
   publishedAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

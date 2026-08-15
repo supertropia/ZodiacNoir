@@ -10,7 +10,7 @@ const NAV = [
   { href: "/articulos", label: "Artículos" },
   { href: "/signos", label: "Signos" },
   { href: "/efemerides", label: "Efemérides" },
-  { href: "/herramientas", label: "Herramientas" },
+  { href: "/tienda", label: "Tienda" },
   { href: "/membresia", label: "Membresía" },
   { href: "/sobre-nosotros", label: "Sobre nosotros" },
 ];
@@ -32,7 +32,7 @@ export async function Header() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-5 font-ui text-sm uppercase tracking-wide text-gold-pale/90 lg:flex">
+        <nav className="hidden items-center gap-7 font-ui text-sm uppercase tracking-wide text-gold-pale/90 md:flex">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className="transition hover:text-gold">
               {item.label}

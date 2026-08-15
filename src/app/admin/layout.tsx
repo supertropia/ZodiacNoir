@@ -21,10 +21,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="font-display text-lg tracking-widest2 text-gold-pale">
             PANEL <span className="text-gold">ZODIAC NOIR</span>
           </Link>
-          <nav className="flex items-center gap-5 font-ui text-sm text-gold-pale/80">
+          <nav className="flex flex-wrap items-center gap-5 font-ui text-sm text-gold-pale/80">
             <Link href="/admin" className="hover:text-gold">Artículos</Link>
-            <Link href="/admin/articulos/nuevo" className="hover:text-gold">Nuevo artículo</Link>
-            <Link href="/admin/eventos" className="hover:text-gold">Eventos</Link>
+            <Link href="/admin/planes" className="hover:text-gold">Membresías</Link>
+            <Link href="/admin/productos" className="hover:text-gold">Productos</Link>
             <Link href="/" className="hover:text-gold">Ver sitio ↗</Link>
           </nav>
         </div>

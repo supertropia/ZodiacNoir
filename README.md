@@ -9,14 +9,8 @@ Prisma + NextAuth (Google) + Resend, pensado para desplegarse en Vercel con domi
 - Buscador de artículos en el propio sitio.
 - Botón "Escuchar este artículo" (Web Speech API del navegador, sin costo de servidor).
 - Botones para compartir en X, Facebook, WhatsApp, Pinterest y copiar enlace.
-- Videos embebidos (YouTube/Vimeo) dentro de los artículos.
 - Formulario de newsletter conectado a base de datos + envío de email de bienvenida (Resend).
 - Autenticación con Google (NextAuth).
-- Panel de administración (`/admin`) para escribir, editar y publicar artículos con imágenes y video.
-- Eventos con cuenta regresiva configurables por vos (`/admin/eventos`), con botones a un
-  artículo del sitio y a un enlace externo (ej. Gumroad).
-- Membresía paga vía Gumroad, con contenido premium bloqueado para no-miembros.
-- Calculadora gratuita de carta natal y tránsitos diarios, con descarga de PDF a cambio de email.
 - Página de efemérides con lunaciones, eclipses y retrogradaciones reales de agosto a diciembre 2026.
 - Contenido editorial de muestra con autoría, nota de metodología y fuentes (siguiendo las
   directrices de Google sobre contenido útil, fiable y centrado en las personas).
@@ -115,50 +109,46 @@ Si todavía no activaste Blob (por ejemplo, mientras trabajás en local), el pan
 con un mensaje claro — mientras tanto podés pegar directamente la URL de una imagen ya alojada en
 otro lugar (por ejemplo, subida a Imgur o a tu propio Google Drive público) en el campo de imagen.
 
-## 5ter. Cuenta regresiva de eventos
+## 5ter. Membresías y tienda de PDFs (Lemon Squeezy)
 
-Desde `/admin/eventos` podés crear eventos (eclipses, lunaciones, lo que quieras) con fecha y
-hora exactas. El evento activo más próximo aparece automáticamente en la portada del sitio y en
-los artículos de categoría "Efemérides", con dos botones opcionales: uno a un artículo del sitio
-(pegás el slug) y otro a un enlace externo, por ejemplo tu ebook en Gumroad.
+El sitio ya incluye `/membresia` (suscripciones) y `/tienda` (PDFs de pago único), con checkout
+por [Lemon Squeezy](https://lemonsqueezy.com) y sincronización automática por webhook.
 
-## 5quater. Membresía paga (Gumroad)
+**Cómo activarlo:**
+1. Creá una cuenta y una tienda en Lemon Squeezy.
+2. En tu tienda, creá un producto por cada plan de membresía (ej. "Plus Mensual", "Plus Anual",
+   marcados como suscripción) y uno por cada PDF (pago único). Copiá el **Variant ID** de cada uno.
+3. Cargá esos planes/productos desde el panel: entrá a `/admin/planes` o `/admin/productos`
+   con tu cuenta de administrador y completá el formulario (nombre, precio a mostrar, el
+   `Variant ID` que copiaste, y para los PDFs subís el archivo directamente ahí).
+4. Completá en tu `.env` / Vercel: `LEMONSQUEEZY_STORE` (el subdominio de tu tienda) y
+   `LEMONSQUEEZY_WEBHOOK_SECRET` (un valor secreto que vos definís).
+5. En Lemon Squeezy: **Settings → Webhooks → Add webhook**. URL:
+   `https://tu-dominio.com/api/lemonsqueezy/webhook`. Eventos a marcar: `order_created`,
+   `order_refunded`, `subscription_created`, `subscription_updated`,
+   `subscription_cancelled`, `subscription_expired`. Signing secret: el mismo valor que
+   pusiste en `LEMONSQUEEZY_WEBHOOK_SECRET`.
+6. Para los PDFs: subilos directamente desde `/admin/productos` (usa Vercel Blob, igual que
+   las imágenes de artículos). Marcá "Publicado" cuando el producto esté listo para venderse.
 
-1. Creá un producto de tipo **membresía** (cobro recurrente) en [Gumroad](https://gumroad.com).
-2. Copiá el "permalink" del producto — es la parte final de la URL, ej. en
-   `gumroad.com/l/abc123` el permalink es `abc123` — y ponelo en `GUMROAD_PRODUCT_PERMALINK`.
-3. Copiá el enlace completo de compra en `GUMROAD_MEMBERSHIP_URL` — es el que se muestra en el
-   botón "Hazte miembro en Gumroad" de `/membresia`.
-4. Activá **"Generate a unique license key per sale"** en la configuración del producto en
-   Gumroad (pestaña "Content"): sin esto no se generan las claves que la gente pega en tu web.
-5. Cuando alguien se suscribe, Gumroad le envía por email una clave de licencia. La persona
-   inicia sesión con Google en tu sitio, va a `/membresia` y pega la clave — el sitio la verifica
-   contra la API pública de Gumroad (gratuita, sin necesidad de token) y le da acceso.
-6. Desde el panel de artículos, marcá "Contenido premium" en cualquier artículo para que solo se
-   vea completo a los miembros (el resto de las personas ve el primer párrafo y un botón para
-   hacerse miembro).
+Cómo funciona la validación: cuando alguien paga, Lemon Squeezy llama a tu webhook, que guarda
+el estado en las tablas `Subscription` (membresías) o `Purchase` (PDFs) usando el email de la
+compra. Las páginas `/membresia` y `/tienda` chequean esas tablas para mostrar "ya sos miembro"
+o el botón de descarga en vez del botón de compra.
 
-**Importante:** la verificación es puntual (al momento de pegar la clave). Si alguien cancela su
-membresía en Gumroad más adelante, no pierde el acceso automáticamente a menos que vuelva a
-verificar. Para una automatización completa se puede sumar un webhook de Gumroad más adelante;
-no está incluido en esta primera versión para mantenerlo simple.
+## 5quater. Optimización para Google AdSense
 
-## 5quinquies. Calculadora de carta natal y tránsitos
-
-`/carta-natal` y `/transitos-diarios` calculan posiciones planetarias reales, sin depender de
-ninguna API paga ni con límites de uso:
-
-- **Cálculo astrológico**: librería `circular-natal-horoscope-js` (de uso libre, corre en tu
-  propio servidor).
-- **Geocodificación** del lugar de nacimiento: [Nominatim](https://nominatim.org) (OpenStreetMap),
-  gratuita y sin necesidad de API key.
-- **Zona horaria**: se calcula sola a partir de las coordenadas, sin servicio externo.
-
-No necesitás configurar nada para que esto funcione — ya viene listo. Al calcular una carta, se
-le pide el email a la persona para descargar el PDF (que también la suma a tu newsletter), y
-después de descargarlo se le ofrece completar `/informe-personalizado` para pedir una lectura
-hecha a mano por vos. Todos esos pedidos quedan guardados en la base de datos (tablas
-`NatalChartLead` y `PersonalReportRequest`) — podés revisarlos con `npx prisma studio`.
+1. Sumá tu sitio en [adsense.google.com](https://adsense.google.com) y esperá la aprobación
+   (para eso necesitás contenido real publicado, que es justo lo que este sitio ya tiene: `/terminos`,
+   `/privacidad`, `/contacto` y artículos con autoría).
+2. Copiá tu Publisher ID (formato `ca-pub-XXXXXXXXXXXXXXXX`) a la variable de entorno
+   `NEXT_PUBLIC_ADSENSE_CLIENT`. Esto activa automáticamente el script de AdSense en todo el
+   sitio y genera `/ads.txt` con tu ID.
+3. Una vez aprobado, agregá los bloques de anuncio (`<ins class="adsbygoogle">...`) donde
+   quieras mostrarlos — por ejemplo entre párrafos de un artículo largo — siguiendo las
+   instrucciones que te da el panel de AdSense al crear cada bloque.
+4. Las páginas de `/terminos` y `/privacidad` ya mencionan el uso de cookies publicitarias de
+   Google, un requisito habitual para la aprobación.
 
 ## 6. Subir el proyecto a GitHub
 
@@ -176,7 +166,9 @@ git push -u origin main
 1. En [vercel.com/new](https://vercel.com/new), importá el repositorio de GitHub.
 2. En **Environment Variables**, cargá las mismas variables de tu `.env`:
    `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` (poné tu dominio final),
-   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `NEWSLETTER_FROM`.
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `NEWSLETTER_FROM`,
+   `CONTACT_TO_EMAIL`, `LEMONSQUEEZY_STORE`, `LEMONSQUEEZY_WEBHOOK_SECRET`,
+   `NEXT_PUBLIC_ADSENSE_CLIENT`.
 3. Desplegá. Vercel corre `prisma generate` automáticamente gracias al script `postinstall`.
 
 ## 8. Conectar tu dominio propio
@@ -196,21 +188,21 @@ src/
   app/                 rutas (App Router)
     articulos/         listado y detalle de artículos (leídos desde la base de datos)
     signos/            listado y detalle de signos
-    efemerides/         calendario de eventos
-    herramientas/        hub de carta natal y tránsitos
-    carta-natal/          calculadora de carta natal + descarga de PDF
-    transitos-diarios/    posiciones planetarias del día
-    informe-personalizado/ formulario de pedido de lectura a medida
-    membresia/            activación de membresía (Gumroad)
+    efemerides/         calendario de eventos (con cuenta regresiva en vivo)
+    membresia/          planes de suscripción paga (Lemon Squeezy)
+    tienda/              PDFs de pago único (Lemon Squeezy)
+    terminos/            términos y condiciones
+    privacidad/          política de privacidad (cookies / AdSense)
+    contacto/            formulario de contacto
     sobre-nosotros/     editorial y método
     ingresar/           login con Google
-    admin/              panel de administración (artículos y eventos)
-    api/                rutas de API (auth, newsletter, artículos, admin, carta natal, membresía)
+    admin/              panel de administración (crear/editar/publicar artículos)
+    api/                rutas de API (auth, newsletter, artículos, admin, contacto,
+                        lemonsqueezy/webhook)
   components/
-    admin/               formulario de artículo/evento y controles del panel
+    admin/               formulario de artículo y controles del panel
   data/                signos y efemérides (contenido estático, no editorial)
-  lib/                 Prisma client, NextAuth, permisos de admin, astrología, geocodificación,
-                        verificación de Gumroad, generación de PDF, render de contenido
+  lib/                 Prisma client, NextAuth, permisos de admin, render de contenido
 prisma/
   schema.prisma        modelo de datos
   seed.cjs             artículos de ejemplo para poblar la base de datos

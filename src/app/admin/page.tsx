@@ -11,6 +11,17 @@ export default async function AdminDashboard() {
 
   return (
     <div>
+      <div className="mb-8 grid gap-4 sm:grid-cols-2">
+        <Link href="/admin/planes" className="rounded-xl border border-gold/15 bg-noir-surface/40 p-5 transition hover:border-gold/40">
+          <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Monetización</p>
+          <h2 className="mt-1 font-display text-xl text-gold-pale">Planes de membresía →</h2>
+        </Link>
+        <Link href="/admin/productos" className="rounded-xl border border-gold/15 bg-noir-surface/40 p-5 transition hover:border-gold/40">
+          <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Monetización</p>
+          <h2 className="mt-1 font-display text-xl text-gold-pale">Productos (PDFs) →</h2>
+        </Link>
+      </div>
+
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-3xl text-gold-pale">Artículos</h1>
         <Link

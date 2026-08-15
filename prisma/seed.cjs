@@ -112,6 +112,10 @@ async function main() {
     });
     console.log(`✓ ${article.slug}`);
   }
+
+  // Los planes de membresía y los productos (PDFs) ahora se cargan desde el panel:
+  // /admin/planes y /admin/productos. Este seed ya no los precarga para evitar
+  // duplicados con IDs de variante inventados.
 }
 
 main()

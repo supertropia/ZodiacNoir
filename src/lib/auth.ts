@@ -20,10 +20,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
-        (session.user as { id?: string; isMember?: boolean }).id = user.id;
-        (session.user as { id?: string; isMember?: boolean }).isMember = Boolean(
-          (user as { isMember?: boolean }).isMember
-        );
+        (session.user as { id?: string }).id = user.id;
       }
       return session;
     },

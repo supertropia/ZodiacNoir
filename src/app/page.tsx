@@ -3,22 +3,17 @@ import { ConstellationEye } from "@/components/ConstellationEye";
 import { ArticleCard } from "@/components/ArticleCard";
 import { NextEventWidget } from "@/components/NextEventWidget";
 import { NewsletterForm } from "@/components/NewsletterForm";
-import { CosmicCountdown } from "@/components/CosmicCountdown";
 import { prisma } from "@/lib/prisma";
-import { getNextActiveEvent } from "@/lib/events-db";
 import { signs } from "@/data/signs";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [articles, nextEvent] = await Promise.all([
-    prisma.article.findMany({
-      where: { published: true },
-      orderBy: { publishedAt: "desc" },
-      take: 7,
-    }),
-    getNextActiveEvent(),
-  ]);
+  const articles = await prisma.article.findMany({
+    where: { published: true },
+    orderBy: { publishedAt: "desc" },
+    take: 7,
+  });
   const [featured, ...rest] = articles;
 
   return (
@@ -85,20 +80,6 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
-
-      {/* Cuenta regresiva al próximo evento cósmico configurado */}
-      {nextEvent && (
-        <section className="mx-auto max-w-4xl px-5 py-6">
-          <CosmicCountdown
-            title={nextEvent.title}
-            subtitle={nextEvent.subtitle}
-            description={nextEvent.description}
-            eventDate={nextEvent.eventDate.toISOString()}
-            articleSlug={nextEvent.articleSlug}
-            guideUrl={nextEvent.guideUrl}
-          />
-        </section>
-      )}
 
       {/* Signos */}
       <section className="mx-auto max-w-6xl px-5 py-20">

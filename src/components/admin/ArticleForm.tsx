@@ -16,7 +16,6 @@ export type ArticleFormValues = {
   authorName: string;
   authorRole: string;
   published: boolean;
-  premium: boolean;
 };
 
 const CATEGORIES = [
@@ -46,7 +45,6 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
       authorName: "",
       authorRole: "",
       published: false,
-      premium: false,
     }
   );
   const [slugTouched, setSlugTouched] = useState(isEditing);
@@ -103,16 +101,6 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
       set("content", newContent);
     }
     e.target.value = "";
-  };
-
-  const onInsertVideo = () => {
-    const url = window.prompt("Pegá el enlace del video (YouTube o Vimeo):");
-    if (!url) return;
-    const textarea = contentRef.current;
-    const cursor = textarea?.selectionStart ?? values.content.length;
-    const snippet = `\n\n[video](${url.trim()})\n\n`;
-    const newContent = values.content.slice(0, cursor) + snippet + values.content.slice(cursor);
-    set("content", newContent);
   };
 
   const onSubmit = async (e: FormEvent, publishOverride?: boolean) => {
@@ -260,25 +248,16 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
       </div>
 
       <div>
-        <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="mb-1.5 flex items-center justify-between">
           <label className={labelClass + " mb-0"} htmlFor="content">Contenido</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onInsertVideo}
-              className="rounded-full border border-gold/40 px-3 py-1 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10"
-            >
-              + Insertar video
-            </button>
-            <button
-              type="button"
-              onClick={() => inlineInputRef.current?.click()}
-              disabled={uploading}
-              className="rounded-full border border-gold/40 px-3 py-1 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
-            >
-              {uploading ? "Subiendo…" : "+ Insertar imagen aquí"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => inlineInputRef.current?.click()}
+            disabled={uploading}
+            className="rounded-full border border-gold/40 px-3 py-1 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
+          >
+            {uploading ? "Subiendo…" : "+ Insertar imagen aquí"}
+          </button>
           <input ref={inlineInputRef} type="file" accept="image/*" className="hidden" onChange={onInlineFileChange} />
         </div>
         <textarea
@@ -289,22 +268,12 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
           className={inputClass + " font-body text-base leading-relaxed"}
           value={values.content}
           onChange={(e) => set("content", e.target.value)}
-          placeholder={"Escribí cada párrafo separado por una línea en blanco.\n\nPodés usar **negrita**, *cursiva*, [enlaces](https://...), insertar imágenes y videos con los botones de arriba."}
+          placeholder={"Escribí cada párrafo separado por una línea en blanco.\n\nPodés usar **negrita**, *cursiva*, [enlaces](https://...) e insertar imágenes con el botón de arriba."}
         />
         <p className="mt-1.5 font-ui text-xs text-gold-dim">
-          Separá los párrafos con una línea en blanco. Admite **negrita**, *cursiva*, [enlace](url), imágenes y videos de YouTube/Vimeo.
+          Separá los párrafos con una línea en blanco. Admite **negrita**, *cursiva*, [enlace](url) e imágenes.
         </p>
       </div>
-
-      <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
-        <input
-          type="checkbox"
-          checked={values.premium}
-          onChange={(e) => set("premium", e.target.checked)}
-          className="h-4 w-4 accent-[#C9A24B]"
-        />
-        Contenido premium (solo para miembros)
-      </label>
 
       <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
         <button

@@ -1,4 +1,5 @@
 import { nextEvent } from "@/data/events";
+import { CountdownTimer } from "./CountdownTimer";
 
 const TYPE_LABEL: Record<string, string> = {
   "eclipse-solar": "Eclipse solar",
@@ -7,11 +8,12 @@ const TYPE_LABEL: Record<string, string> = {
   "luna-llena": "Luna llena",
   "retrogrado-inicio": "Inicio de retrogradación",
   "retrogrado-fin": "Fin de retrogradación",
+  aspecto: "Aspecto planetario",
   estacion: "Punto cardinal",
 };
 
 export function NextEventWidget() {
-  const event = nextEvent(new Date("2026-07-29"));
+  const event = nextEvent(new Date());
   if (!event) return null;
 
   const date = new Date(event.date + "T12:00:00");
@@ -23,7 +25,10 @@ export function NextEventWidget() {
       <p className="mt-2 font-ui text-xs uppercase tracking-wide text-gold">{TYPE_LABEL[event.type] ?? event.type}</p>
       <h3 className="mt-1 font-display text-2xl text-gold-pale">{event.title}</h3>
       <p className="mt-2 font-ui text-sm text-gold-dim">{formatted}</p>
-      <p className="mt-3 font-body text-base text-gold-pale/85">{event.description}</p>
+      <div className="mt-4">
+        <CountdownTimer targetIso={`${event.date}T12:00:00`} />
+      </div>
+      <p className="mt-4 font-body text-base text-gold-pale/85">{event.description}</p>
     </div>
   );
 }

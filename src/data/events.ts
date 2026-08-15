@@ -1,6 +1,6 @@
 export type CosmicEvent = {
   date: string; // ISO date
-  type: "eclipse-solar" | "eclipse-lunar" | "luna-nueva" | "luna-llena" | "retrogrado-inicio" | "retrogrado-fin" | "estacion";
+  type: "eclipse-solar" | "eclipse-lunar" | "luna-nueva" | "luna-llena" | "retrogrado-inicio" | "retrogrado-fin" | "estacion" | "aspecto";
   title: string;
   sign?: string;
   description: string;
@@ -170,7 +170,29 @@ export const cosmicEvents: CosmicEvent[] = [
     sign: "Cáncer",
     description: "Cierre del año lunar con foco en el hogar, la familia y la memoria emocional.",
   },
+  {
+    date: "2026-08-27",
+    type: "aspecto",
+    title: "Trígono Marte–Júpiter",
+    description: "Aspecto armónico entre Marte y Júpiter: impulso, confianza y buena energía para iniciar proyectos.",
+  },
+  {
+    date: "2026-08-31",
+    type: "aspecto",
+    title: "Trígono Júpiter–Saturno",
+    description: "Equilibrio entre expansión y disciplina: buen momento para consolidar proyectos en marcha.",
+  },
+  {
+    date: "2026-10-15",
+    type: "aspecto",
+    title: "Trígono Sol–Saturno",
+    description: "Aspecto de estructura y compromiso: favorece acuerdos, planes a largo plazo y decisiones firmes.",
+  },
 ];
+
+// Nota sobre "aspecto": fechas de aspectos planetarios recopiladas de calendarios astrológicos
+// públicos (orbe aproximado ±1 día). Verificar con una efeméride precisa (por ejemplo Swiss
+// Ephemeris o Astro.com) antes de publicar, ya que distintas fuentes varían levemente.
 
 export function nextEvent(from: Date = new Date()): CosmicEvent | null {
   const upcoming = cosmicEvents

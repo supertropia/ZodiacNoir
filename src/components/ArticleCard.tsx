@@ -29,9 +29,6 @@ export function ArticleCard({ article, size = "md" }: { article: Article; size?:
           <span className="rounded-full border border-gold/30 px-2.5 py-1 text-gold">
             {CATEGORY_LABEL[article.category] ?? article.category}
           </span>
-          {article.premium && (
-            <span className="rounded-full bg-gold/20 px-2.5 py-1 text-gold">★ Premium</span>
-          )}
           {article.sign && <span>{article.sign}</span>}
           <span>· {article.readingTimeMin} min</span>
         </div>

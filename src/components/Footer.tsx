@@ -19,6 +19,8 @@ export function Footer() {
             <li><Link href="/articulos" className="hover:text-gold">Artículos</Link></li>
             <li><Link href="/signos" className="hover:text-gold">Signos</Link></li>
             <li><Link href="/efemerides" className="hover:text-gold">Efemérides</Link></li>
+            <li><Link href="/tienda" className="hover:text-gold">Tienda</Link></li>
+            <li><Link href="/membresia" className="hover:text-gold">Membresía</Link></li>
             <li><Link href="/sobre-nosotros" className="hover:text-gold">Editorial y método</Link></li>
           </ul>
         </div>
@@ -33,8 +35,13 @@ export function Footer() {
         </div>
       </div>
       <div className="gold-line" />
-      <div className="mx-auto max-w-6xl px-5 py-6 font-ui text-xs text-gold-dim">
-        © {new Date().getFullYear()} Zodiac Noir. Contenido con fines de entretenimiento y autoconocimiento.
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-6 font-ui text-xs text-gold-dim sm:flex-row sm:items-center sm:justify-between">
+        <span>© {new Date().getFullYear()} Zodiac Noir. Contenido con fines de entretenimiento y autoconocimiento.</span>
+        <span className="flex gap-4">
+          <Link href="/terminos" className="hover:text-gold">Términos y condiciones</Link>
+          <Link href="/privacidad" className="hover:text-gold">Privacidad</Link>
+          <Link href="/contacto" className="hover:text-gold">Contacto</Link>
+        </span>
       </div>
     </footer>
   );
