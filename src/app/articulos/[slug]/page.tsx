@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeQuery } from "@/lib/prisma";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ListenButton } from "@/components/ListenButton";
 import { ArticleCard } from "@/components/ArticleCard";
@@ -10,7 +10,7 @@ import { renderArticleContent, stripToPlainText } from "@/lib/content";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const article = await prisma.article.findUnique({ where: { slug: params.slug } });
+  const article = await safeQuery(() => prisma.article.findUnique({ where: { slug: params.slug } }));
   if (!article || !article.published) return {};
   return {
     title: article.title,
@@ -25,17 +25,20 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = await prisma.article.findUnique({ where: { slug: params.slug } });
+  const article = await safeQuery(() => prisma.article.findUnique({ where: { slug: params.slug } }));
   if (!article || !article.published) notFound();
 
-  const url = `https://zodiacnoir.com/articulos/${article.slug}`;
+  const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
+  const url = `${siteUrl}/articulos/${article.slug}`;
   const plainText = `${article.title}. ${stripToPlainText(article.content)}`;
 
-  const related = await prisma.article.findMany({
-    where: { published: true, category: article.category, NOT: { slug: article.slug } },
-    orderBy: { publishedAt: "desc" },
-    take: 2,
-  });
+  const related = await safeQuery(() =>
+    prisma.article.findMany({
+      where: { published: true, category: article.category, NOT: { slug: article.slug } },
+      orderBy: { publishedAt: "desc" },
+      take: 2,
+    })
+  );
 
   const date = new Date(article.publishedAt ?? article.createdAt).toLocaleDateString("es-AR", {
     day: "numeric",
@@ -63,7 +66,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-gold/15 py-4">
         <div className="font-ui text-sm text-gold-pale/80">
           <p>
-            Por <span className="text-gold">{article.authorName}</span> — {article.authorRole}
+            Por <span className="text-gold">Zodiac Noir</span>
           </p>
           <p className="text-gold-dim">{date} · {article.readingTimeMin} min de lectura</p>
         </div>
