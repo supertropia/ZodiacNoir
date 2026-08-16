@@ -21,8 +21,6 @@ export default async function EditArticlePage({ params }: { params: { id: string
           coverImage: article.coverImage ?? "",
           category: article.category,
           sign: article.sign ?? "",
-          authorName: article.authorName,
-          authorRole: article.authorRole,
           published: article.published,
         }}
       />
