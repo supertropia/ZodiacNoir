@@ -36,7 +36,7 @@ export function ArticleCard({ article, size = "md" }: { article: Article; size?:
           {article.title}
         </h3>
         <p className={`mt-3 font-body text-gold-pale/80 ${isLg ? "text-lg" : "text-base"}`}>{article.excerpt}</p>
-        <p className="mt-4 font-ui text-xs text-gold-dim">Por {article.authorName}</p>
+        <p className="mt-4 font-ui text-xs text-gold-dim">Por Zodiac Noir</p>
       </div>
     </Link>
   );
