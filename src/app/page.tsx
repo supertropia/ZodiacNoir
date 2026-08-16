@@ -3,17 +3,19 @@ import { ConstellationEye } from "@/components/ConstellationEye";
 import { ArticleCard } from "@/components/ArticleCard";
 import { NextEventWidget } from "@/components/NextEventWidget";
 import { NewsletterForm } from "@/components/NewsletterForm";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeQuery } from "@/lib/prisma";
 import { signs } from "@/data/signs";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const articles = await prisma.article.findMany({
-    where: { published: true },
-    orderBy: { publishedAt: "desc" },
-    take: 7,
-  });
+  const articles = await safeQuery(() =>
+    prisma.article.findMany({
+      where: { published: true },
+      orderBy: { publishedAt: "desc" },
+      take: 7,
+    })
+  );
   const [featured, ...rest] = articles;
 
   return (
