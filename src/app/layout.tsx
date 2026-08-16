@@ -16,7 +16,7 @@ const cormorant = Cormorant_Garamond({
 const jost = Jost({ subsets: ["latin"], variable: "--font-jost", weight: ["400", "500", "600"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://zodiacnoir.com"),
+  metadataBase: new URL("https://zodiacnoirweb.com"),
   title: {
     default: "Zodiac Noir — Astrología revelada",
     template: "%s · Zodiac Noir",
