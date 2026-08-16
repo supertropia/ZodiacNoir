@@ -25,6 +25,9 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
       lemonVariantId: "", featured: false, benefits: "",
     }
   );
+  const [benefitsText, setBenefitsText] = useState(
+    (initial?.benefits ?? "").split("|").filter(Boolean).join("\n")
+  );
   const [slugTouched, setSlugTouched] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -42,12 +45,20 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
     setSaving(true);
     setError("");
     try {
+      const payload = {
+        ...values,
+        benefits: benefitsText
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .join("|"),
+      };
       const url = isEditing ? `/api/admin/plans/${initial!.id}` : "/api/admin/plans";
       const method = isEditing ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar el plan");
@@ -120,9 +131,10 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
           Beneficios (uno por línea)
         </label>
         <textarea id="benefits" rows={4} className={inputClass}
-          value={values.benefits.split("|").join("\n")}
-          onChange={(e) => set("benefits", e.target.value.split("\n").map((l) => l.trim()).filter(Boolean).join("|"))}
+          value={benefitsText}
+          onChange={(e) => setBenefitsText(e.target.value)}
           placeholder={"Artículos exclusivos\nEfemérides ampliadas\n10% off en la tienda"} />
+      </div>
       </div>
 
       <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
