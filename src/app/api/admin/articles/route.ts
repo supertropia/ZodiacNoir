@@ -17,9 +17,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { slug, title, excerpt, content, coverImage, category, sign, authorName, authorRole, published } = body;
+    const { slug, title, excerpt, content, coverImage, category, sign, published } = body;
 
-    if (!slug || !title || !excerpt || !content || !category || !authorName || !authorRole) {
+    if (!slug || !title || !excerpt || !content || !category) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
     }
 
@@ -37,8 +37,8 @@ export async function POST(req: Request) {
         coverImage: coverImage || null,
         category,
         sign: sign || null,
-        authorName,
-        authorRole,
+        authorName: "Zodiac Noir",
+        authorRole: "Equipo editorial",
         readingTimeMin: estimateReadingMinutes(content),
         published: Boolean(published),
         publishedAt: published ? new Date() : null,
