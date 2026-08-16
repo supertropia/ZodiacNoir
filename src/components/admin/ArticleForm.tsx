@@ -13,8 +13,6 @@ export type ArticleFormValues = {
   coverImage: string;
   category: string;
   sign: string;
-  authorName: string;
-  authorRole: string;
   published: boolean;
 };
 
@@ -42,8 +40,6 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
       coverImage: "",
       category: "efemerides",
       sign: "",
-      authorName: "",
-      authorRole: "",
       published: false,
     }
   );
@@ -208,17 +204,6 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
               </option>
             ))}
           </select>
-        </div>
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <label className={labelClass} htmlFor="authorName">Autor</label>
-          <input id="authorName" required className={inputClass} value={values.authorName} onChange={(e) => set("authorName", e.target.value)} />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="authorRole">Rol / formación del autor</label>
-          <input id="authorRole" required className={inputClass} value={values.authorRole} onChange={(e) => set("authorRole", e.target.value)} />
         </div>
       </div>
 
