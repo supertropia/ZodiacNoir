@@ -64,7 +64,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-gold/15 py-4">
         <div className="font-ui text-sm text-gold-pale/80">
           <p>
-            Por <span className="text-gold">{article.authorName}</span> — {article.authorRole}
+            Por <span className="text-gold">Zodiac Noir</span>
           </p>
           <p className="text-gold-dim">{date} · {article.readingTimeMin} min de lectura</p>
         </div>
