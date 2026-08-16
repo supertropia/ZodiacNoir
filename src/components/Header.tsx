@@ -5,6 +5,7 @@ import { isAdminEmail } from "@/lib/admin";
 import { ThemeToggle } from "./ThemeToggle";
 import { FontSizeControl } from "./FontSizeControl";
 import { SearchBar } from "./SearchBar";
+import { AccountMenu } from "./AccountMenu";
 
 const NAV = [
   { href: "/articulos", label: "Artículos" },
@@ -51,12 +52,11 @@ export async function Header() {
           </div>
           <FontSizeControl />
           <ThemeToggle />
-          <Link
-            href="/ingresar"
-            className="focus-ring hidden rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10 sm:block"
-          >
-            Ingresar
-          </Link>
+          <AccountMenu
+            name={session?.user?.name}
+            email={session?.user?.email}
+            image={session?.user?.image}
+          />
         </div>
       </div>
       <div className="border-t border-gold/10 px-5 py-2 sm:hidden">
