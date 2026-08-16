@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { signs, getSign } from "@/data/signs";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeQuery } from "@/lib/prisma";
 import { ArticleCard } from "@/components/ArticleCard";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +17,12 @@ export default async function SignPage({ params }: { params: { sign: string } })
   const sign = getSign(params.sign);
   if (!sign) notFound();
 
-  const related = await prisma.article.findMany({
-    where: { published: true, sign: sign.name },
-    orderBy: { publishedAt: "desc" },
-  });
+  const related = await safeQuery(() =>
+    prisma.article.findMany({
+      where: { published: true, sign: sign.name },
+      orderBy: { publishedAt: "desc" },
+    })
+  );
 
   return (
     <section className="mx-auto max-w-4xl px-5 py-16">
