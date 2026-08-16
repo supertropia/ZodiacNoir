@@ -135,7 +135,7 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
           onChange={(e) => setBenefitsText(e.target.value)}
           placeholder={"Artículos exclusivos\nEfemérides ampliadas\n10% off en la tienda"} />
       </div>
-      </div>
+     
 
       <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
         <input type="checkbox" checked={values.featured}
