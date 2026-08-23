@@ -104,17 +104,24 @@ model Subscription {
 
 // Un producto digital (principalmente PDFs) vendido como pago único.
 model Product {
-  id             String     @id @default(cuid())
-  slug           String     @unique
-  title          String
-  description    String
-  priceLabel     String // texto a mostrar, ej. "USD 9"
-  lemonVariantId String // ID de la variante en Lemon Squeezy
-  coverImage     String?
-  fileUrl        String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
-  published      Boolean    @default(true)
-  createdAt      DateTime   @default(now())
-  purchases      Purchase[]
+  id                  String     @id @default(cuid())
+  slug                String     @unique
+  title               String
+  description         String
+  priceLabel          String // texto a mostrar, ej. "USD 9"
+  lemonVariantId      String // ID de la variante en Lemon Squeezy
+  coverImage          String? // imagen cuadrada de la tarjeta en /tienda
+  coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
+  heroImage           String? // imagen grande de la ficha completa
+  heroImagePosition   Int        @default(50) // posición vertical 0-100 de heroImage
+  galleryImages       String[]   @default([]) // capturas del interior del PDF (3-4 sugeridas)
+  contentHighlights   Json       @default("[]") // tarjetas de "Qué vas a recibir": [{ "title": "...", "description": "..." }]
+  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text": "...", "shared": 12 }]
+  audienceText        String? // párrafo "Para quién es esto"
+  fileUrl             String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
+  published           Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+  purchases           Purchase[]
 }
 
 // Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy.
