@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPurchased } from "@/lib/membership";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
+import { ProductGrid, type ProductViewModel } from "@/components/store/ProductGrid";
 
 export const metadata = {
   title: "Tienda",
@@ -20,6 +21,34 @@ export default async function TiendaPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const viewModels: ProductViewModel[] = await Promise.all(
+    products.map(async (product) => {
+      const owned = await hasPurchased(email, product.id);
+      const checkoutUrl = buildCheckoutUrl(product.lemonVariantId, {
+        email: email ?? undefined,
+        redirectPath: "/tienda?compra=1",
+      });
+
+      return {
+        id: product.id,
+        title: product.title,
+        description: product.description,
+        priceLabel: product.priceLabel,
+        coverImage: product.coverImage,
+        coverImagePosition: product.coverImagePosition ?? 50,
+        heroImage: product.heroImage,
+        heroImagePosition: product.heroImagePosition ?? 50,
+        galleryImages: (product.galleryImages ?? []) as string[],
+        contentHighlights: (product.contentHighlights ?? []) as { title: string; description: string }[],
+        testimonials: (product.testimonials ?? []) as { name: string; stars: number; text: string; shared: number }[],
+        audienceText: product.audienceText,
+        owned,
+        fileUrl: owned ? product.fileUrl : null,
+        checkoutUrl,
+      };
+    })
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-5 py-16">
       <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Tienda</p>
@@ -28,58 +57,12 @@ export default async function TiendaPage() {
         Pago único, entrega inmediata al confirmarse el pago.
       </p>
 
-      {products.length === 0 && (
+      {viewModels.length === 0 ? (
         <div className="mt-10 rounded-xl border border-gold/20 bg-noir-surface/50 p-6 font-ui text-sm text-gold-dim">
-          Todavía no hay productos cargados. Subí tus PDFs a Vercel Blob, creá la variante
-          correspondiente en Lemon Squeezy y agregá una fila en la tabla <code>Product</code> con
-          su <code>lemonVariantId</code> y <code>fileUrl</code>.
+          Todavía no hay productos cargados. Creá uno nuevo desde <code>/admin/productos/nuevo</code>.
         </div>
-      )}
-
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} email={email} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-async function ProductCard({
-  product,
-  email,
-}: {
-  product: Awaited<ReturnType<typeof prisma.product.findMany>>[number];
-  email: string | null;
-}) {
-  const owned = await hasPurchased(email, product.id);
-  const checkoutUrl = buildCheckoutUrl(product.lemonVariantId, {
-    email: email ?? undefined,
-    redirectPath: "/tienda?compra=1",
-  });
-
-  return (
-    <div className="rounded-2xl border border-gold/20 bg-noir-surface/50 p-6">
-      <h2 className="font-display text-xl text-gold-pale">{product.title}</h2>
-      <p className="mt-2 font-body text-sm text-gold-pale/80">{product.description}</p>
-      <p className="mt-4 font-ui text-lg text-gold">{product.priceLabel}</p>
-
-      {owned && product.fileUrl ? (
-        <a
-          href={product.fileUrl}
-          className="focus-ring mt-4 inline-block w-full rounded-full border border-gold px-5 py-2.5 text-center font-ui text-sm uppercase tracking-wide text-gold hover:bg-gold/10"
-        >
-          Descargar PDF
-        </a>
-      ) : checkoutUrl ? (
-        <a
-          href={checkoutUrl}
-          className="focus-ring mt-4 inline-block w-full rounded-full bg-gold px-5 py-2.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-        >
-          Comprar
-        </a>
       ) : (
-        <p className="mt-4 font-ui text-xs text-gold-dim">Falta configurar LEMONSQUEEZY_STORE.</p>
+        <ProductGrid products={viewModels} />
       )}
     </div>
   );
