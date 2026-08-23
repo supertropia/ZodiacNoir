@@ -261,7 +261,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                 <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">Compartir</h4>
                 <div className="flex flex-wrap gap-2.5">
                   
-                    target="_blank"
+                    <a target="_blank"
                     rel="noreferrer"
                     href={`https://wa.me/?text=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}%20${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
@@ -269,7 +269,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     WhatsApp
                   </a>
                   
-                    target="_blank"
+                    <a target="_blank"
                     rel="noreferrer"
                     href="https://www.instagram.com/"
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
@@ -277,7 +277,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     Instagram
                   </a>
                   
-                    target="_blank"
+                    <a target="_blank"
                     rel="noreferrer"
                     href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&url=${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
@@ -285,7 +285,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     X
                   </a>
                   
-                    href={`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
+                    <a href={\`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
                   >
                     Correo
@@ -298,14 +298,14 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
 
                 {openProduct.owned && openProduct.fileUrl ? (
                   
-                    href={openProduct.fileUrl}
+                   <a href={openProduct.fileUrl}
                     className="focus-ring rounded-full border border-gold px-7 py-3 font-ui text-sm uppercase tracking-wide text-gold hover:bg-gold/10"
                   >
                     Descargar PDF
                   </a>
                 ) : openProduct.checkoutUrl ? (
                   
-                    href={openProduct.checkoutUrl}
+                    <a href={openProduct.checkoutUrl}
                     className="focus-ring rounded-full bg-gold px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
                   >
                     Comprar guía completa
