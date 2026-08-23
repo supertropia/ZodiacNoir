@@ -9,7 +9,12 @@ export default async function EditProductPage({ params }: { params: { id: string
   const initial = {
     ...product,
     coverImage: product.coverImage ?? "",
+    heroImage: product.heroImage ?? "",
+    audienceText: product.audienceText ?? "",
     fileUrl: product.fileUrl ?? "",
+    galleryImages: (product.galleryImages ?? []) as string[],
+    contentHighlights: (product.contentHighlights ?? []) as { title: string; description: string }[],
+    testimonials: (product.testimonials ?? []) as { name: string; stars: number; text: string; shared: number }[],
   };
 
   return (
