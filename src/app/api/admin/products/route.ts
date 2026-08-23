@@ -16,7 +16,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { slug, title, description, priceLabel, lemonVariantId, coverImage, fileUrl, published } = body;
+    const {
+      slug, title, description, priceLabel, lemonVariantId,
+      coverImage, coverImagePosition,
+      heroImage, heroImagePosition,
+      galleryImages, contentHighlights, testimonials, audienceText,
+      fileUrl, published,
+    } = body;
 
     if (!slug || !title || !description || !priceLabel || !lemonVariantId) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
@@ -31,6 +37,13 @@ export async function POST(req: Request) {
       data: {
         slug, title, description, priceLabel, lemonVariantId,
         coverImage: coverImage || null,
+        coverImagePosition: Number.isFinite(coverImagePosition) ? coverImagePosition : 50,
+        heroImage: heroImage || null,
+        heroImagePosition: Number.isFinite(heroImagePosition) ? heroImagePosition : 50,
+        galleryImages: Array.isArray(galleryImages) ? galleryImages : [],
+        contentHighlights: Array.isArray(contentHighlights) ? contentHighlights : [],
+        testimonials: Array.isArray(testimonials) ? testimonials : [],
+        audienceText: audienceText || null,
         fileUrl: fileUrl || null,
         published: Boolean(published),
       },
