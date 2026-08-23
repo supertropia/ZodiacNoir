@@ -285,7 +285,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     X
                   </a>
                   
-                    <a href={\`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
+                    <a href={`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
                   >
                     Correo
