@@ -5,9 +5,9 @@ import crypto from "crypto";
  * No requiere llamar a la API: Lemon Squeezy soporta "checkout links" simples por URL.
  * Necesitás la variable de entorno LEMONSQUEEZY_STORE (el subdominio de tu tienda, ej. "zodiacnoir").
  */
-export function buildCheckoutUrl(variantId: string, opts?: { email?: string; redirectPath?: string }) {
+export function buildCheckoutUrl(variantId: string | null | undefined, opts?: { email?: string; redirectPath?: string }) {
   const store = process.env.LEMONSQUEEZY_STORE;
-  if (!store) return null;
+  if (!store || !variantId) return null;
 
   const url = new URL(`https://${store}.lemonsqueezy.com/checkout/buy/${variantId}`);
   url.searchParams.set("embed", "0");
