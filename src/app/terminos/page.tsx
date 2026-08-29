@@ -1,5 +1,6 @@
 export const metadata = {
   title: "Términos y condiciones",
+  alternates: { canonical: "/terminos" },
 };
 
 export default function TerminosPage() {
