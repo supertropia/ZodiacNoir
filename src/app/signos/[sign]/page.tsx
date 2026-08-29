@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 export function generateMetadata({ params }: { params: { sign: string } }): Metadata {
   const sign = getSign(params.sign);
   if (!sign) return {};
-  return { title: sign.name, description: sign.summary };
+  return {
+    title: sign.name,
+    description: sign.summary,
+    alternates: { canonical: `/signos/${params.sign}` },
+  };
 }
 
 export default async function SignPage({ params }: { params: { sign: string } }) {
