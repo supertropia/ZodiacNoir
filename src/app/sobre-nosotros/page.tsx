@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Sobre nosotros",
   description:
     "Astrología humanista, tarot y psicología simbólica: quién escribe en Zodiac Noir y cómo trabaja el contenido.",
+  alternates: { canonical: "/sobre-nosotros" },
 };
 
 const CREDENTIALS = [
@@ -69,7 +70,7 @@ export default function AboutPage() {
       </div>
 
       <div className="mt-10 flex flex-wrap items-center gap-4">
-        <a
+        
           href="https://www.instagram.com/zodiac_noir_astrologia_y_tarot/"
           target="_blank"
           rel="noopener noreferrer"
@@ -77,7 +78,7 @@ export default function AboutPage() {
         >
           Instagram
         </a>
-        <a
+        
           href="https://x.com/zodiacnoir"
           target="_blank"
           rel="noopener noreferrer"
