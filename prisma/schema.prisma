@@ -111,7 +111,7 @@ model Product {
   priceLabel          String // texto a mostrar, ej. "USD 9"
   priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
   amazonUrl           String? // link a la página del producto en Amazon (envío físico o Kindle)
-  lemonVariantId      String // ID de la variante en Lemon Squeezy
+  lemonVariantId      String? // ID de la variante en Lemon Squeezy (opcional: solo si vas a vender por ahí)
   coverImage          String? // imagen cuadrada de la tarjeta en /tienda
   coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
   heroImage           String? // imagen grande de la ficha completa
