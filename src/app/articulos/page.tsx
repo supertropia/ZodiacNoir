@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Artículos",
   description: "Todos los artículos de Zodiac Noir sobre astrología, tarot y psicología astrológica.",
+  alternates: { canonical: "/articulos" },
 };
 
 export default async function ArticlesPage() {
