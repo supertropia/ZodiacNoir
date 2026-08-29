@@ -13,6 +13,8 @@ export type ProductFormValues = {
   title: string;
   description: string;
   priceLabel: string;
+  priceArs: number | null;
+  amazonUrl: string;
   lemonVariantId: string;
   coverImage: string;
   coverImagePosition: number;
@@ -28,6 +30,7 @@ export type ProductFormValues = {
 
 const emptyValues: ProductFormValues = {
   slug: "", title: "", description: "", priceLabel: "",
+  priceArs: null, amazonUrl: "",
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
@@ -205,8 +208,31 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
           </div>
           <div>
             <label className={labelClass} htmlFor="lemonVariantId">Variant ID de Lemon Squeezy</label>
-            <input id="lemonVariantId" required className={inputClass} value={values.lemonVariantId}
-              onChange={(e) => set("lemonVariantId", e.target.value)} />
+            <input id="lemonVariantId" className={inputClass} value={values.lemonVariantId}
+              onChange={(e) => set("lemonVariantId", e.target.value)}
+              placeholder="Todavía no usamos Lemon Squeezy en la tienda" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="priceArs">Precio en ARS (Mercado Pago)</label>
+            <input id="priceArs" type="number" min={0} className={inputClass}
+              value={values.priceArs ?? ""}
+              onChange={(e) => set("priceArs", e.target.value === "" ? null : Number(e.target.value))}
+              placeholder="Ej. 12990" />
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Dejalo vacío si todavía no querés vender este producto por Mercado Pago.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="amazonUrl">Link del producto en Amazon</label>
+            <input id="amazonUrl" className={inputClass} value={values.amazonUrl}
+              onChange={(e) => set("amazonUrl", e.target.value)}
+              placeholder="https://www.amazon.com/tu-producto" />
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Dejalo vacío si este producto no está publicado en Amazon.
+            </p>
           </div>
         </div>
       </div>
