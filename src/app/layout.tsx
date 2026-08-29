@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   },
   description:
     "Astrología, tarot y psicología astrológica escritos por personas para personas: lunaciones, eclipses, aspectos planetarios y guías de los doce signos.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Zodiac Noir",
     description: "Revelando lo invisible. Astrología, tarot y efemérides con criterio editorial.",
