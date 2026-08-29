@@ -8,6 +8,7 @@ import { ProductGrid, type ProductViewModel } from "@/components/store/ProductGr
 export const metadata = {
   title: "Tienda",
   description: "PDFs de astrología, tarot y efemérides para descargar: guías de tránsitos, cartas natales y más.",
+  alternates: { canonical: "/tienda" },
 };
 
 export const dynamic = "force-dynamic";
