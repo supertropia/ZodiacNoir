@@ -1,0 +1,162 @@
+// Zodiac Noir — modelo de datos
+// Motor recomendado: PostgreSQL (Vercel Postgres, Neon o Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Autenticación (NextAuth / Google) ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Newsletter ----------
+
+model Subscriber {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  confirmed        Boolean   @default(false)
+  unsubscribeToken String    @unique @default(cuid())
+  createdAt        DateTime  @default(now())
+  confirmedAt      DateTime?
+}
+
+// ---------- Monetización (Lemon Squeezy) ----------
+
+// Un plan de membresía (ej. "Mensual", "Anual"). Los precios reales viven en Lemon Squeezy;
+// acá solo guardamos la referencia para armar los botones de compra y mostrar el estado.
+model MembershipPlan {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  description    String
+  priceLabel     String // texto a mostrar, ej. "USD 7/mes"
+  interval       String // "mes" | "año"
+  lemonVariantId String // ID de la variante en Lemon Squeezy
+  featured       Boolean        @default(false)
+  benefits       String // lista separada por "|"
+  createdAt      DateTime       @default(now())
+  subscriptions  Subscription[]
+}
+
+// Estado de la membresía paga de una persona, sincronizado vía webhook de Lemon Squeezy.
+model Subscription {
+  id                  String          @id @default(cuid())
+  email               String          @unique
+  status              String // active | on_trial | past_due | cancelled | expired
+  lemonSubscriptionId String          @unique
+  lemonCustomerId     String?
+  renewsAt            DateTime?
+  endsAt              DateTime?
+  plan                MembershipPlan? @relation(fields: [planId], references: [id])
+  planId              String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+}
+
+// Un producto digital (principalmente PDFs) vendido como pago único.
+model Product {
+  id                  String     @id @default(cuid())
+  slug                String     @unique
+  title               String
+  description         String
+  priceLabel          String // texto a mostrar, ej. "USD 9"
+  priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
+  amazonUrl           String? // link a la página del producto en Amazon (envío físico o Kindle)
+  lemonVariantId      String // ID de la variante en Lemon Squeezy
+  coverImage          String? // imagen cuadrada de la tarjeta en /tienda
+  coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
+  heroImage           String? // imagen grande de la ficha completa
+  heroImagePosition   Int        @default(50) // posición vertical 0-100 de heroImage
+  galleryImages       String[]   @default([]) // capturas del interior del PDF (3-4 sugeridas)
+  contentHighlights   Json       @default("[]") // tarjetas de "Qué vas a recibir": [{ "title": "...", "description": "..." }]
+  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text": "...", "shared": 12 }]
+  audienceText        String? // párrafo "Para quién es esto"
+  fileUrl             String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
+  published           Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+  purchases           Purchase[]
+}
+
+// Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy o Mercado Pago.
+model Purchase {
+  id                   String   @id @default(cuid())
+  email                String
+  product              Product  @relation(fields: [productId], references: [id])
+  productId            String
+  provider             String   @default("lemonsqueezy") // "lemonsqueezy" | "mercadopago"
+  lemonOrderId         String?  @unique
+  mercadoPagoPaymentId String?  @unique
+  status               String // paid | refunded
+  createdAt            DateTime @default(now())
+
+  @@index([email])
+}
+
+// ---------- Contenido editorial ----------
+
+model Article {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  title          String
+  excerpt        String
+  content        String    @db.Text
+  coverImage     String?
+  category       String // efemerides | signos | tarot | psicologia-astrologica
+  sign           String? // signo del zodiaco relacionado, si aplica
+  authorName     String
+  authorRole     String
+  readingTimeMin Int
+  published      Boolean   @default(false)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
