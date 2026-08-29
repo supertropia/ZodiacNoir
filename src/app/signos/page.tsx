@@ -5,6 +5,7 @@ import { signs } from "@/data/signs";
 export const metadata: Metadata = {
   title: "Los doce signos",
   description: "Elemento, modalidad, regente y perfil de cada uno de los doce signos del zodiaco.",
+  alternates: { canonical: "/signos" },
 };
 
 export default function SignsPage() {
