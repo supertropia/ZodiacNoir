@@ -19,13 +19,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json();
     const {
       slug, title, description, priceLabel, lemonVariantId,
+      priceArs, amazonUrl,
       coverImage, coverImagePosition,
       heroImage, heroImagePosition,
       galleryImages, contentHighlights, testimonials, audienceText,
       fileUrl, published,
     } = body;
 
-    if (!slug || !title || !description || !priceLabel || !lemonVariantId) {
+    if (!slug || !title || !description || !priceLabel) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
     }
 
@@ -40,7 +41,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const product = await prisma.product.update({
       where: { id: params.id },
       data: {
-        slug, title, description, priceLabel, lemonVariantId,
+        slug, title, description, priceLabel,
+        lemonVariantId: lemonVariantId || null,
+        priceArs: Number.isFinite(priceArs) ? priceArs : null,
+        amazonUrl: amazonUrl || null,
         coverImage: coverImage || null,
         coverImagePosition: Number.isFinite(coverImagePosition) ? coverImagePosition : 50,
         heroImage: heroImage || null,
