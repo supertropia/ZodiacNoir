@@ -1,5 +1,6 @@
 export const metadata = {
   title: "Política de privacidad",
+  alternates: { canonical: "/privacidad" },
 };
 
 export default function PrivacidadPage() {
