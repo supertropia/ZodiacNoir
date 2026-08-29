@@ -70,8 +70,8 @@ export default function AboutPage() {
       </div>
 
       <div className="mt-10 flex flex-wrap items-center gap-4">
-        
-          href="https://www.instagram.com/zodiac_noir_astrologia_y_tarot/"
+       
+         <a  href="https://www.instagram.com/zodiac_noir_astrologia_y_tarot/"
           target="_blank"
           rel="noopener noreferrer"
           className="focus-ring rounded-full border border-gold/40 px-5 py-2.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
@@ -79,7 +79,7 @@ export default function AboutPage() {
           Instagram
         </a>
         
-          href="https://x.com/zodiacnoir"
+         <a href="https://x.com/zodiacnoir"
           target="_blank"
           rel="noopener noreferrer"
           className="focus-ring rounded-full border border-gold/40 px-5 py-2.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
