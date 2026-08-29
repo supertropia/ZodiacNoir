@@ -3,6 +3,12 @@
 import { signIn } from "next-auth/react";
 import { ConstellationEye } from "@/components/ConstellationEye";
 
+// Nota: esta página no se indexa (ver src/app/robots.ts). Es una página
+// transaccional (dispara el OAuth de Google) sin valor de contenido para SEO,
+// y mantenerla fuera del rastreo reduce la superficie que un escáner
+// automático podría interpretar erróneamente como una imitación de un
+// formulario de login.
+
 export default function SignInPage() {
   return (
     <section className="mx-auto flex max-w-md flex-col items-center px-5 py-20 text-center">
