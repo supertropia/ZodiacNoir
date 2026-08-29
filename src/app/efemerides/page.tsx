@@ -4,6 +4,7 @@ import { cosmicEvents } from "@/data/events";
 export const metadata: Metadata = {
   title: "Efemérides",
   description: "Calendario de lunaciones, eclipses y retrogradaciones planetarias.",
+  alternates: { canonical: "/efemerides" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
