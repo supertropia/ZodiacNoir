@@ -71,7 +71,7 @@ export default async function MembresiaPage() {
               </ul>
               {checkoutUrl ? (
                 
-                  href={checkoutUrl}
+                 <a href={checkoutUrl}
                   className="focus-ring mt-6 inline-block w-full rounded-full bg-gold px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
                 >
                   Sumarme
