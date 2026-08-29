@@ -109,6 +109,8 @@ model Product {
   title               String
   description         String
   priceLabel          String // texto a mostrar, ej. "USD 9"
+  priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
+  amazonUrl           String? // link a la página del producto en Amazon (envío físico o Kindle)
   lemonVariantId      String // ID de la variante en Lemon Squeezy
   coverImage          String? // imagen cuadrada de la tarjeta en /tienda
   coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
@@ -124,15 +126,17 @@ model Product {
   purchases           Purchase[]
 }
 
-// Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy.
+// Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy o Mercado Pago.
 model Purchase {
-  id           String   @id @default(cuid())
-  email        String
-  product      Product  @relation(fields: [productId], references: [id])
-  productId    String
-  lemonOrderId String   @unique
-  status       String // paid | refunded
-  createdAt    DateTime @default(now())
+  id                   String   @id @default(cuid())
+  email                String
+  product              Product  @relation(fields: [productId], references: [id])
+  productId            String
+  provider             String   @default("lemonsqueezy") // "lemonsqueezy" | "mercadopago"
+  lemonOrderId         String?  @unique
+  mercadoPagoPaymentId String?  @unique
+  status               String // paid | refunded
+  createdAt            DateTime @default(now())
 
   @@index([email])
 }
