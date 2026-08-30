@@ -10,8 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------- Autenticación (NextAuth / Google) ----------
-
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -58,8 +56,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ---------- Newsletter ----------
-
 model Subscriber {
   id               String    @id @default(cuid())
   email            String    @unique
@@ -69,18 +65,16 @@ model Subscriber {
   confirmedAt      DateTime?
 }
 
-// ---------- Monetización (Lemon Squeezy) ----------
-
 model MembershipPlan {
   id             String         @id @default(cuid())
   name           String
   slug           String         @unique
   description    String
-  priceLabel     String // texto a mostrar, ej. "USD 7/mes"
-  interval       String // "mes" | "año"
-  lemonVariantId String // ID de la variante en Lemon Squeezy
+  priceLabel     String
+  interval       String
+  lemonVariantId String
   featured       Boolean        @default(false)
-  benefits       String // lista separada por "|"
+  benefits       String
   createdAt      DateTime       @default(now())
   subscriptions  Subscription[]
 }
@@ -88,7 +82,7 @@ model MembershipPlan {
 model Subscription {
   id                  String          @id @default(cuid())
   email               String          @unique
-  status              String // active | on_trial | past_due | cancelled | expired
+  status              String
   lemonSubscriptionId String          @unique
   lemonCustomerId     String?
   renewsAt            DateTime?
@@ -99,31 +93,30 @@ model Subscription {
   updatedAt           DateTime        @updatedAt
 }
 
-// Un producto digital (principalmente PDFs) vendido como pago único.
 model Product {
-  id                  String     @id @default(cuid())
-  slug                String     @unique
-  title               String
-  description         String
-  priceLabel          String // texto interno de referencia, ya no se muestra en la tienda
-  priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
-  amazonKindleUrl     String? // link a la versión Kindle (digital) en Amazon
-  amazonKindlePrice   String? // texto a mostrar, ej. "€5,99"
-  amazonPaperbackUrl  String? // link a la versión tapa blanda (física) en Amazon
-  amazonPaperbackPrice String? // texto a mostrar, ej. "USD 14,99"
-  lemonVariantId      String? // ID de la variante en Lemon Squeezy (opcional: solo si vas a vender por ahí)
-  coverImage          String? // imagen cuadrada de la tarjeta en /tienda
-  coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
-  heroImage           String? // imagen grande de la ficha completa
-  heroImagePosition   Int        @default(50) // posición vertical 0-100 de heroImage
-  galleryImages       String[]   @default([]) // capturas del interior del PDF (3-4 sugeridas)
-  contentHighlights   Json       @default("[]") // tarjetas de "Qué vas a recibir": [{ "title": "...", "description": "..." }]
-  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text": "...", "shared": 12 }]
-  audienceText        String? // párrafo "Para quién es esto"
-  fileUrl             String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
-  published           Boolean    @default(true)
-  createdAt           DateTime   @default(now())
-  purchases           Purchase[]
+  id                   String     @id @default(cuid())
+  slug                 String     @unique
+  title                String
+  description          String
+  priceLabel           String
+  priceArs             Int?
+  amazonKindleUrl      String?
+  amazonKindlePrice    String?
+  amazonPaperbackUrl   String?
+  amazonPaperbackPrice String?
+  lemonVariantId       String?
+  coverImage           String?
+  coverImagePosition   Int        @default(50)
+  heroImage            String?
+  heroImagePosition    Int        @default(50)
+  galleryImages        String[]   @default([])
+  contentHighlights    Json       @default("[]")
+  testimonials         Json       @default("[]")
+  audienceText         String?
+  fileUrl              String?
+  published            Boolean    @default(true)
+  createdAt            DateTime   @default(now())
+  purchases            Purchase[]
 }
 
 model Purchase {
@@ -131,16 +124,14 @@ model Purchase {
   email                String
   product              Product  @relation(fields: [productId], references: [id])
   productId            String
-  provider             String   @default("lemonsqueezy") // "lemonsqueezy" | "mercadopago"
+  provider             String   @default("lemonsqueezy")
   lemonOrderId         String?  @unique
   mercadoPagoPaymentId String?  @unique
-  status               String // paid | refunded
+  status               String
   createdAt            DateTime @default(now())
 
   @@index([email])
 }
-
-// ---------- Contenido editorial ----------
 
 model Article {
   id             String    @id @default(cuid())
@@ -149,8 +140,8 @@ model Article {
   excerpt        String
   content        String    @db.Text
   coverImage     String?
-  category       String // efemerides | signos | tarot | psicologia-astrologica
-  sign           String? // signo del zodiaco relacionado, si aplica
+  category       String
+  sign           String?
   authorName     String
   authorRole     String
   readingTimeMin Int
