@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getPayment } from "@/lib/mercadopago";
+
+export const runtime = "nodejs";
+
+async function handleNotification(req: Request) {
+  const url = new URL(req.url);
+  const type = url.searchParams.get("type") ?? url.searchParams.get("topic");
+  const paymentId = url.searchParams.get("data.id") ?? url.searchParams.get("id");
+
+  if (type !== "payment" || !paymentId) {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  try {
+    const payment = await getPayment(paymentId);
+    const productId = payment.external_reference;
+    const email = payment.payer?.email;
+
+    if (payment.status === "approved" && productId && email) {
+      const product = await prisma.product.findUnique({ where: { id: productId } });
+      if (product) {
+        await prisma.purchase.upsert({
+          where: { mercadoPagoPaymentId: String(payment.id) },
+          update: { status: "paid" },
+          create: {
+            email,
+            productId: product.id,
+            provider: "mercadopago",
+            mercadoPagoPaymentId: String(payment.id),
+            status: "paid",
+          },
+        });
+      }
+    }
+
+    if (payment.status === "refunded" || payment.status === "cancelled") {
+      await prisma.purchase.updateMany({
+        where: { mercadoPagoPaymentId: String(payment.id) },
+        data: { status: "refunded" },
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Error procesando webhook de Mercado Pago:", error);
+    return NextResponse.json({ ok: false });
+  }
+}
+
+export async function POST(req: Request) {
+  return handleNotification(req);
+}
+
+export async function GET(req: Request) {
+  return handleNotification(req);
+}
