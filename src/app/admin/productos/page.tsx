@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
+import { CopyProductLinkButton } from "@/components/admin/CopyProductLinkButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function AdminProductsPage() {
               <p className="font-ui text-xs text-gold-dim">variant: {p.lemonVariantId} {p.fileUrl ? "· PDF cargado" : "· falta PDF"}</p>
             </div>
             <div className="flex items-center gap-3">
+              <CopyProductLinkButton slug={p.slug} />
               <Link href={`/admin/productos/${p.id}`}
                 className="focus-ring rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10">
                 Editar
