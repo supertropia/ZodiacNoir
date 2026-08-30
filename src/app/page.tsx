@@ -20,8 +20,13 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Próximo evento cósmico — visible arriba de todo solo en mobile */}
+      <div className="mx-auto max-w-6xl px-5 pt-6 lg:hidden">
+        <NextEventWidget />
+      </div>
+
       {/* Hero */}
-      <section className="relative overflow-hidden px-5 pb-20 pt-16 sm:pt-24">
+      <section className="relative overflow-hidden px-5 pb-20 pt-10 sm:pt-24">
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">
@@ -64,7 +69,9 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-5 py-16">
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           {featured && <ArticleCard article={featured} size="lg" />}
-          <NextEventWidget />
+          <div className="hidden lg:block">
+            <NextEventWidget />
+          </div>
         </div>
       </section>
 
