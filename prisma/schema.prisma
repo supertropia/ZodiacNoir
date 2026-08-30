@@ -71,8 +71,6 @@ model Subscriber {
 
 // ---------- Monetización (Lemon Squeezy) ----------
 
-// Un plan de membresía (ej. "Mensual", "Anual"). Los precios reales viven en Lemon Squeezy;
-// acá solo guardamos la referencia para armar los botones de compra y mostrar el estado.
 model MembershipPlan {
   id             String         @id @default(cuid())
   name           String
@@ -87,7 +85,6 @@ model MembershipPlan {
   subscriptions  Subscription[]
 }
 
-// Estado de la membresía paga de una persona, sincronizado vía webhook de Lemon Squeezy.
 model Subscription {
   id                  String          @id @default(cuid())
   email               String          @unique
@@ -110,7 +107,8 @@ model Product {
   description         String
   priceLabel          String // texto a mostrar, ej. "USD 9"
   priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
-  amazonUrl           String? // link a la página del producto en Amazon (envío físico o Kindle)
+  amazonKindleUrl     String? // link a la versión Kindle (digital) en Amazon
+  amazonPaperbackUrl  String? // link a la versión tapa blanda (física) en Amazon
   lemonVariantId      String? // ID de la variante en Lemon Squeezy (opcional: solo si vas a vender por ahí)
   coverImage          String? // imagen cuadrada de la tarjeta en /tienda
   coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
@@ -118,45 +116,4 @@ model Product {
   heroImagePosition   Int        @default(50) // posición vertical 0-100 de heroImage
   galleryImages       String[]   @default([]) // capturas del interior del PDF (3-4 sugeridas)
   contentHighlights   Json       @default("[]") // tarjetas de "Qué vas a recibir": [{ "title": "...", "description": "..." }]
-  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text": "...", "shared": 12 }]
-  audienceText        String? // párrafo "Para quién es esto"
-  fileUrl             String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
-  published           Boolean    @default(true)
-  createdAt           DateTime   @default(now())
-  purchases           Purchase[]
-}
-
-// Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy o Mercado Pago.
-model Purchase {
-  id                   String   @id @default(cuid())
-  email                String
-  product              Product  @relation(fields: [productId], references: [id])
-  productId            String
-  provider             String   @default("lemonsqueezy") // "lemonsqueezy" | "mercadopago"
-  lemonOrderId         String?  @unique
-  mercadoPagoPaymentId String?  @unique
-  status               String // paid | refunded
-  createdAt            DateTime @default(now())
-
-  @@index([email])
-}
-
-// ---------- Contenido editorial ----------
-
-model Article {
-  id             String    @id @default(cuid())
-  slug           String    @unique
-  title          String
-  excerpt        String
-  content        String    @db.Text
-  coverImage     String?
-  category       String // efemerides | signos | tarot | psicologia-astrologica
-  sign           String? // signo del zodiaco relacionado, si aplica
-  authorName     String
-  authorRole     String
-  readingTimeMin Int
-  published      Boolean   @default(false)
-  publishedAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-}
+  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text":
