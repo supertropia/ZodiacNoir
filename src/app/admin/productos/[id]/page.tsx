@@ -12,6 +12,8 @@ export default async function EditProductPage({ params }: { params: { id: string
     heroImage: product.heroImage ?? "",
     audienceText: product.audienceText ?? "",
     fileUrl: product.fileUrl ?? "",
+    amazonUrl: product.amazonUrl ?? "",
+    lemonVariantId: product.lemonVariantId ?? "",
     galleryImages: (product.galleryImages ?? []) as string[],
     contentHighlights: (product.contentHighlights ?? []) as { title: string; description: string }[],
     testimonials: (product.testimonials ?? []) as { name: string; stars: number; text: string; shared: number }[],
