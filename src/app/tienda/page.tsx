@@ -13,7 +13,11 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function TiendaPage() {
+export default async function TiendaPage({
+  searchParams,
+}: {
+  searchParams: { compra?: string };
+}) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
 
@@ -35,6 +39,8 @@ export default async function TiendaPage() {
         title: product.title,
         description: product.description,
         priceLabel: product.priceLabel,
+        priceArs: product.priceArs,
+        amazonUrl: product.amazonUrl,
         coverImage: product.coverImage,
         coverImagePosition: product.coverImagePosition ?? 50,
         heroImage: product.heroImage,
@@ -57,6 +63,24 @@ export default async function TiendaPage() {
       <p className="mt-4 max-w-2xl font-body text-lg text-gold-pale/85">
         Pago único, entrega inmediata al confirmarse el pago.
       </p>
+
+      {searchParams?.compra === "1" && (
+        <div className="mt-6 rounded-xl border border-gold/30 bg-gold/10 px-5 py-4 font-ui text-sm text-gold">
+          ¡Gracias por tu compra! Estamos confirmando el pago — puede tardar unos segundos.
+          Si no ves el botón de descarga todavía, actualizá esta página en un momento.
+        </div>
+      )}
+      {searchParams?.compra === "pendiente" && (
+        <div className="mt-6 rounded-xl border border-gold/30 bg-gold/10 px-5 py-4 font-ui text-sm text-gold">
+          Tu pago quedó pendiente de confirmación (por ejemplo, si elegiste pagar en efectivo).
+          En cuanto se acredite vas a poder descargar el PDF desde acá con el mismo email.
+        </div>
+      )}
+      {searchParams?.compra === "error" && (
+        <div className="mt-6 rounded-xl border border-wine/50 bg-wine/10 px-5 py-4 font-ui text-sm text-wine-bright">
+          Hubo un problema con el pago y no se completó. Podés intentarlo de nuevo cuando quieras.
+        </div>
+      )}
 
       {viewModels.length === 0 ? (
         <div className="mt-10 rounded-xl border border-gold/20 bg-noir-surface/50 p-6 font-ui text-sm text-gold-dim">
