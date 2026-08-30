@@ -14,7 +14,7 @@ export function AccountMenu({ name, email, image }: AccountMenuProps) {
     return (
       <Link
         href="/ingresar"
-        className="focus-ring hidden rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10 sm:block"
+        className="focus-ring rounded-full border border-gold/40 px-3 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10 sm:px-4 sm:py-2"
       >
         Ingresar
       </Link>
@@ -22,7 +22,7 @@ export function AccountMenu({ name, email, image }: AccountMenuProps) {
   }
 
   return (
-    <div className="hidden items-center gap-2 sm:flex">
+    <div className="flex items-center gap-2">
       {image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -31,12 +31,12 @@ export function AccountMenu({ name, email, image }: AccountMenuProps) {
           className="h-7 w-7 rounded-full border border-gold/40 object-cover"
         />
       ) : null}
-      <span className="max-w-[120px] truncate font-ui text-xs text-gold-pale">
+      <span className="hidden max-w-[120px] truncate font-ui text-xs text-gold-pale sm:inline">
         {name ?? email}
       </span>
       <button
         onClick={() => signOut({ callbackUrl: "/" })}
-        className="focus-ring rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+        className="focus-ring rounded-full border border-gold/40 px-3 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10 sm:px-4 sm:py-2"
       >
         Salir
       </button>
