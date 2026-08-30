@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json();
     const {
       slug, title, description, priceLabel, lemonVariantId,
-      priceArs, amazonUrl,
+      priceArs, amazonKindleUrl, amazonPaperbackUrl,
       coverImage, coverImagePosition,
       heroImage, heroImagePosition,
       galleryImages, contentHighlights, testimonials, audienceText,
@@ -44,7 +44,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         slug, title, description, priceLabel,
         lemonVariantId: lemonVariantId || null,
         priceArs: Number.isFinite(priceArs) ? priceArs : null,
-        amazonUrl: amazonUrl || null,
+        amazonKindleUrl: amazonKindleUrl || null,
+        amazonPaperbackUrl: amazonPaperbackUrl || null,
         coverImage: coverImage || null,
         coverImagePosition: Number.isFinite(coverImagePosition) ? coverImagePosition : 50,
         heroImage: heroImage || null,
