@@ -6,6 +6,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { FontSizeControl } from "./FontSizeControl";
 import { SearchBar } from "./SearchBar";
 import { AccountMenu } from "./AccountMenu";
+import { MobileNav } from "./MobileNav";
 
 const NAV = [
   { href: "/articulos", label: "Artículos" },
@@ -22,16 +23,19 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gold/15 bg-noir-bg/85 backdrop-blur supports-[backdrop-filter]:bg-noir-bg/70">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
-        <Link href="/" className="group flex items-center gap-2">
-          <svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="46" fill="none" stroke="#C9A24B" strokeWidth="1.2" />
-            <path d="M58 34a18 18 0 100 32 13 13 0 010-32z" fill="#C9A24B" />
-          </svg>
-          <span className="font-display text-lg tracking-widest2 text-gold-pale group-hover:text-gold">
-            ZODIAC <span className="text-gold">NOIR</span>
-          </span>
-        </Link>
+      <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <MobileNav items={NAV} isAdmin={isAdmin} />
+          <Link href="/" className="group flex items-center gap-2">
+            <svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="#C9A24B" strokeWidth="1.2" />
+              <path d="M58 34a18 18 0 100 32 13 13 0 010-32z" fill="#C9A24B" />
+            </svg>
+            <span className="font-display text-lg tracking-widest2 text-gold-pale group-hover:text-gold">
+              ZODIAC <span className="text-gold">NOIR</span>
+            </span>
+          </Link>
+        </div>
 
         <nav className="hidden items-center gap-7 font-ui text-sm uppercase tracking-wide text-gold-pale/90 md:flex">
           {NAV.map((item) => (
