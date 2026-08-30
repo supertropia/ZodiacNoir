@@ -20,6 +20,7 @@ export default async function TiendaPage({
 }) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
+  const isLoggedIn = Boolean(email);
 
   const products = await prisma.product.findMany({
     where: { published: true },
@@ -69,8 +70,18 @@ export default async function TiendaPage({
 
       {searchParams?.compra === "1" && (
         <div className="mt-6 rounded-xl border border-gold/30 bg-gold/10 px-5 py-4 font-ui text-sm text-gold">
-          ¡Gracias por tu compra! Estamos confirmando el pago — puede tardar unos segundos.
-          Si no ves el botón de descarga todavía, actualizá esta página en un momento.
+          {isLoggedIn ? (
+            <>
+              ¡Gracias por tu compra! Estamos confirmando el pago — puede tardar unos segundos.
+              Si no ves el botón de descarga todavía, actualizá esta página en un momento.
+            </>
+          ) : (
+            <>
+              ¡Gracias por tu compra! Revisá el correo electrónico que usaste al pagar en Mercado
+              Pago — ahí te enviamos el link de descarga de tu PDF apenas se confirme el pago
+              (puede tardar unos minutos, y a veces llega a la carpeta de spam).
+            </>
+          )}
         </div>
       )}
       {searchParams?.compra === "pendiente" && (
