@@ -12,7 +12,9 @@ export type ProductViewModel = {
   priceLabel: string;
   priceArs: number | null;
   amazonKindleUrl: string | null;
+  amazonKindlePrice: string | null;
   amazonPaperbackUrl: string | null;
+  amazonPaperbackPrice: string | null;
   coverImage: string | null;
   coverImagePosition: number;
   heroImage: string | null;
@@ -115,9 +117,8 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     <p className="mt-2 flex-1 font-body text-base leading-snug text-gold-pale/75 [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden">
                       {product.description}
                     </p>
-                    <div className="mt-auto flex items-center justify-between pt-3">
-                      <span className="font-ui text-lg font-medium text-gold-bright">{product.priceLabel}</span>
-                      <span className="font-body text-sm italic text-gold-dim">girar ↻</span>
+                    <div className="mt-auto flex items-center justify-end pt-3">
+                      <span className="font-body text-sm italic text-gold-dim">+ info ↻</span>
                     </div>
                   </div>
                 </div>
@@ -144,7 +145,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     }}
                     className="focus-ring mx-auto mt-2 rounded-full border border-gold-dim px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold-bright transition hover:bg-gold hover:text-noir-bg"
                   >
-                    Ver ficha completa
+                    Adquirir
                   </button>
                 </div>
               </div>
@@ -186,6 +187,81 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                   <p className="mt-3 font-body text-lg leading-relaxed text-gold-pale/80">
                     {openProduct.description}
                   </p>
+
+                  {payError && (
+                    <p className="mt-4 font-ui text-sm text-wine-bright">{payError}</p>
+                  )}
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    {(openProduct.owned || openProduct.priceArs) && (
+                      <div className="rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
+                        <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">
+                          PDF digital · descarga inmediata
+                        </p>
+                        <p className="mt-0.5 font-ui text-[11px] text-gold-dim">Mercado Pago · válido para LATAM</p>
+
+                        {openProduct.owned && openProduct.fileUrl ? (
+                          <a href={openProduct.fileUrl}
+                            className="focus-ring mt-3 block w-full rounded-full bg-gold px-5 py-2.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
+                          >
+                            Descargar PDF
+                          </a>
+                        ) : (
+                          <>
+                            <p className="mt-2 font-ui text-lg font-medium text-gold-bright">
+                              ARS {openProduct.priceArs?.toLocaleString("es-AR")}
+                            </p>
+                            <button
+                              type="button"
+                              disabled={payingId === openProduct.id}
+                              onClick={() => payWithMercadoPago(openProduct.id)}
+                              className="focus-ring mt-2 w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+                            >
+                              {payingId === openProduct.id ? "Redirigiendo…" : "Adquirir"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {(openProduct.amazonKindleUrl || openProduct.amazonPaperbackUrl) && (
+                      <div className="rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
+                        <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Adquirir en Amazon</p>
+                        <div className="mt-3 space-y-2">
+                          {openProduct.amazonKindleUrl && (
+                            <a target="_blank"
+                              rel="noreferrer"
+                              href={openProduct.amazonKindleUrl}
+                              className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
+                            >
+                              <span>Kindle (digital)</span>
+                              {openProduct.amazonKindlePrice && <span>{openProduct.amazonKindlePrice}</span>}
+                            </a>
+                          )}
+                          {openProduct.amazonPaperbackUrl && (
+                            <a target="_blank"
+                              rel="noreferrer"
+                              href={openProduct.amazonPaperbackUrl}
+                              className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
+                            >
+                              <span>Libro físico</span>
+                              {openProduct.amazonPaperbackPrice && <span>{openProduct.amazonPaperbackPrice}</span>}
+                            </a>
+                          )}
+                        </div>
+                        <p className="mt-3 font-ui text-[11px] text-gold-dim">
+                          Envío y tiempos de entrega dependen exclusivamente de Amazon según tu ubicación.
+                        </p>
+                      </div>
+                    )}
+
+                    {!openProduct.owned && !openProduct.priceArs &&
+                      !openProduct.amazonKindleUrl && !openProduct.amazonPaperbackUrl && (
+                      <p className="font-ui text-xs text-gold-dim sm:col-span-2">
+                        Este producto todavía no tiene una forma de pago configurada.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -312,76 +388,6 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                 </div>
               </div>
 
-              {payError && (
-                <p className="mt-6 font-ui text-sm text-wine-bright">{payError}</p>
-              )}
-
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-gold/15 pt-6">
-                <span className="font-ui text-2xl font-medium text-gold-bright">{openProduct.priceLabel}</span>
-
-                <div className="flex flex-wrap gap-3">
-                  {openProduct.owned && openProduct.fileUrl && (
-                    <a href={openProduct.fileUrl}
-                      className="focus-ring rounded-full border border-gold px-7 py-3 font-ui text-sm uppercase tracking-wide text-gold hover:bg-gold/10"
-                    >
-                      Descargar PDF
-                    </a>
-                  )}
-
-                  {!openProduct.owned && openProduct.priceArs && (
-                    <button
-                      type="button"
-                      disabled={payingId === openProduct.id}
-                      onClick={() => payWithMercadoPago(openProduct.id)}
-                      className="focus-ring rounded-full bg-gold px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
-                    >
-                      {payingId === openProduct.id ? "Redirigiendo…" : "Descargar eBook · Mercado Pago"}
-                    </button>
-                  )}
-
-                  {!openProduct.owned && !openProduct.priceArs &&
-                    !openProduct.amazonKindleUrl && !openProduct.amazonPaperbackUrl && (
-                    <p className="font-ui text-xs text-gold-dim">
-                      Este producto todavía no tiene una forma de pago configurada.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {(openProduct.amazonKindleUrl || openProduct.amazonPaperbackUrl) && (
-                <div className="mt-6 rounded-xl border border-gold/15 bg-noir-surface2/40 p-5">
-                  <h4 className="font-display text-sm uppercase tracking-wide text-gold-bright">
-                    Adquirir en Amazon
-                  </h4>
-                  <div className="mt-3 flex flex-wrap gap-3">
-                    {openProduct.amazonKindleUrl && (
-                      <a target="_blank"
-                        rel="noreferrer"
-                        href={openProduct.amazonKindleUrl}
-                        className="focus-ring rounded-full border border-gold/40 px-6 py-2.5 font-ui text-sm uppercase tracking-wide text-gold-pale hover:bg-gold/10"
-                      >
-                        Kindle (digital)
-                      </a>
-                    )}
-                    {openProduct.amazonPaperbackUrl && (
-                      <a target="_blank"
-                        rel="noreferrer"
-                        href={openProduct.amazonPaperbackUrl}
-                        className="focus-ring rounded-full border border-gold/40 px-6 py-2.5 font-ui text-sm uppercase tracking-wide text-gold-pale hover:bg-gold/10"
-                      >
-                        Quiero el libro físico
-                      </a>
-                    )}
-                  </div>
-                  <p className="mt-3 font-ui text-xs text-gold-dim">
-                    La disponibilidad de envío y los tiempos de entrega dependen exclusivamente de
-                    Amazon según tu ubicación.
-                  </p>
-                </div>
-              )}
-              <p className="mt-3 text-center font-ui text-xs text-gold-dim">
-                El eBook se descarga apenas se confirma el pago.
-              </p>
             </div>
           )}
         </div>
