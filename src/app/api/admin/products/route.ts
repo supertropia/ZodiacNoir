@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       slug, title, description, priceLabel, lemonVariantId,
-      priceArs, amazonKindleUrl, amazonPaperbackUrl,
+      priceArs, amazonKindleUrl, amazonKindlePrice, amazonPaperbackUrl, amazonPaperbackPrice,
       coverImage, coverImagePosition,
       heroImage, heroImagePosition,
       galleryImages, contentHighlights, testimonials, audienceText,
@@ -40,7 +40,9 @@ export async function POST(req: Request) {
         lemonVariantId: lemonVariantId || null,
         priceArs: Number.isFinite(priceArs) ? priceArs : null,
         amazonKindleUrl: amazonKindleUrl || null,
+        amazonKindlePrice: amazonKindlePrice || null,
         amazonPaperbackUrl: amazonPaperbackUrl || null,
+        amazonPaperbackPrice: amazonPaperbackPrice || null,
         coverImage: coverImage || null,
         coverImagePosition: Number.isFinite(coverImagePosition) ? coverImagePosition : 50,
         heroImage: heroImage || null,
