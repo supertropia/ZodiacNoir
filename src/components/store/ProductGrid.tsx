@@ -1,9 +1,97 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ContentHighlight = { title: string; description: string };
 type Testimonial = { name: string; stars: number; text: string; shared: number };
+
+function Carousel({
+  itemCount,
+  renderItem,
+  itemClassName = "w-full sm:w-1/2 lg:w-1/3",
+}: {
+  itemCount: number;
+  renderItem: (index: number) => React.ReactNode;
+  itemClassName?: string;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
+
+  const scrollToIndex = (i: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const child = el.children[i] as HTMLElement | undefined;
+    if (child) el.scrollTo({ left: child.offsetLeft, behavior: "smooth" });
+  };
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const children = Array.from(el.children) as HTMLElement[];
+    let closest = 0;
+    let minDist = Infinity;
+    children.forEach((c, i) => {
+      const dist = Math.abs(c.offsetLeft - el.scrollLeft);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = i;
+      }
+    });
+    setIndex(closest);
+  };
+
+  if (itemCount === 0) return null;
+
+  return (
+    <div className="relative">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {Array.from({ length: itemCount }).map((_, i) => (
+          <div key={i} className={`shrink-0 snap-start ${itemClassName}`}>
+            {renderItem(i)}
+          </div>
+        ))}
+      </div>
+
+      {itemCount > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() => scrollToIndex(Math.max(0, index - 1))}
+            aria-label="Anterior"
+            className="focus-ring absolute left-0 top-1/2 hidden h-8 w-8 -translate-x-3 -translate-y-1/2 items-center justify-center rounded-full border border-gold/30 bg-noir-bg/85 text-gold-pale hover:border-gold hover:text-gold sm:flex"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToIndex(Math.min(itemCount - 1, index + 1))}
+            aria-label="Siguiente"
+            className="focus-ring absolute right-0 top-1/2 hidden h-8 w-8 -translate-y-1/2 translate-x-3 items-center justify-center rounded-full border border-gold/30 bg-noir-bg/85 text-gold-pale hover:border-gold hover:text-gold sm:flex"
+          >
+            ›
+          </button>
+          <div className="mt-3 flex justify-center gap-1.5">
+            {Array.from({ length: itemCount }).map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => scrollToIndex(i)}
+                aria-label={`Ir al elemento ${i + 1}`}
+                className={`h-1.5 w-1.5 rounded-full transition ${
+                  i === index ? "bg-gold" : "bg-gold/30"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export type ProductViewModel = {
   id: string;
@@ -145,7 +233,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     }}
                     className="focus-ring mx-auto mt-2 rounded-full border border-gold-dim px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold-bright transition hover:bg-gold hover:text-noir-bg"
                   >
-                    Adquirir
+                    + info
                   </button>
                 </div>
               </div>
@@ -192,42 +280,47 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     <p className="mt-4 font-ui text-sm text-wine-bright">{payError}</p>
                   )}
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-6 grid items-stretch gap-3 sm:grid-cols-2">
                     {(openProduct.owned || openProduct.priceArs) && (
-                      <div className="rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
+                      <div className="flex h-full flex-col rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
                         <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">
                           PDF digital · descarga inmediata
                         </p>
                         <p className="mt-0.5 font-ui text-[11px] text-gold-dim">Mercado Pago · válido para LATAM</p>
 
-                        {openProduct.owned && openProduct.fileUrl ? (
-                          <a href={openProduct.fileUrl}
-                            className="focus-ring mt-3 block w-full rounded-full bg-gold px-5 py-2.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-                          >
-                            Descargar PDF
-                          </a>
-                        ) : (
-                          <>
-                            <p className="mt-2 font-ui text-lg font-medium text-gold-bright">
-                              ARS {openProduct.priceArs?.toLocaleString("es-AR")}
-                            </p>
-                            <button
-                              type="button"
-                              disabled={payingId === openProduct.id}
-                              onClick={() => payWithMercadoPago(openProduct.id)}
-                              className="focus-ring mt-2 w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+                        <div className="mt-auto pt-3">
+                          {openProduct.owned && openProduct.fileUrl ? (
+                            <a href={openProduct.fileUrl}
+                              className="focus-ring block w-full rounded-full bg-gold px-5 py-2.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
                             >
-                              {payingId === openProduct.id ? "Redirigiendo…" : "Adquirir"}
-                            </button>
-                          </>
-                        )}
+                              Descargar PDF
+                            </a>
+                          ) : (
+                            <>
+                              <p className="mb-2 font-ui text-lg font-medium text-gold-bright">
+                                ARS {openProduct.priceArs?.toLocaleString("es-AR")}
+                              </p>
+                              <button
+                                type="button"
+                                disabled={payingId === openProduct.id}
+                                onClick={() => payWithMercadoPago(openProduct.id)}
+                                className="focus-ring w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+                              >
+                                {payingId === openProduct.id ? "Redirigiendo…" : "Adquirir"}
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     )}
 
                     {(openProduct.amazonKindleUrl || openProduct.amazonPaperbackUrl) && (
-                      <div className="rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
+                      <div className="flex h-full flex-col rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
                         <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Adquirir en Amazon</p>
-                        <div className="mt-3 space-y-2">
+                        <p className="mt-0.5 font-ui text-[11px] text-gold-dim">
+                          Envío y entrega dependen exclusivamente de Amazon según tu ubicación.
+                        </p>
+                        <div className="mt-auto space-y-2 pt-3">
                           {openProduct.amazonKindleUrl && (
                             <a target="_blank"
                               rel="noreferrer"
@@ -249,9 +342,6 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                             </a>
                           )}
                         </div>
-                        <p className="mt-3 font-ui text-[11px] text-gold-dim">
-                          Envío y tiempos de entrega dependen exclusivamente de Amazon según tu ubicación.
-                        </p>
                       </div>
                     )}
 
@@ -281,17 +371,19 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                   <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
                     Qué vas a recibir
                   </h4>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {openProduct.contentHighlights.map((h, i) => (
-                      <div
-                        key={i}
-                        className="rounded-lg border border-gold/15 p-4 transition hover:-translate-y-0.5 hover:border-gold/50 hover:bg-gold/5"
-                      >
-                        <b className="mb-1 block font-display text-sm text-gold-pale">{h.title}</b>
-                        <span className="font-body text-base text-gold-pale/75">{h.description}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <Carousel
+                    itemCount={openProduct.contentHighlights.length}
+                    itemClassName="w-[85%] sm:w-1/2 lg:w-1/3"
+                    renderItem={(i) => {
+                      const h = openProduct.contentHighlights[i];
+                      return (
+                        <div className="h-full rounded-lg border border-gold/15 p-4 transition hover:-translate-y-0.5 hover:border-gold/50 hover:bg-gold/5">
+                          <b className="mb-1 block font-display text-sm text-gold-pale">{h.title}</b>
+                          <span className="font-body text-base text-gold-pale/75">{h.description}</span>
+                        </div>
+                      );
+                    }}
+                  />
                 </div>
               )}
 
@@ -300,16 +392,19 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                   <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
                     Un vistazo por dentro
                   </h4>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {openProduct.galleryImages.map((url, i) => (
-                      <div
-                        key={i}
-                        className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/15 transition hover:scale-[1.03]"
-                      >
-                        <img src={url} alt={`Página interior ${i + 1}`} className="h-full w-full object-cover" />
+                  <Carousel
+                    itemCount={openProduct.galleryImages.length}
+                    itemClassName="w-[55%] sm:w-1/3 lg:w-1/4"
+                    renderItem={(i) => (
+                      <div className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/15 transition hover:scale-[1.03]">
+                        <img
+                          src={openProduct.galleryImages[i]}
+                          alt={`Página interior ${i + 1}`}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
