@@ -89,31 +89,3 @@ model Subscription {
   id                  String          @id @default(cuid())
   email               String          @unique
   status              String // active | on_trial | past_due | cancelled | expired
-  lemonSubscriptionId String          @unique
-  lemonCustomerId     String?
-  renewsAt            DateTime?
-  endsAt              DateTime?
-  plan                MembershipPlan? @relation(fields: [planId], references: [id])
-  planId              String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-}
-
-// Un producto digital (principalmente PDFs) vendido como pago único.
-model Product {
-  id                  String     @id @default(cuid())
-  slug                String     @unique
-  title               String
-  description         String
-  priceLabel          String // texto a mostrar, ej. "USD 9"
-  priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
-  amazonKindleUrl     String? // link a la versión Kindle (digital) en Amazon
-  amazonPaperbackUrl  String? // link a la versión tapa blanda (física) en Amazon
-  lemonVariantId      String? // ID de la variante en Lemon Squeezy (opcional: solo si vas a vender por ahí)
-  coverImage          String? // imagen cuadrada de la tarjeta en /tienda
-  coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
-  heroImage           String? // imagen grande de la ficha completa
-  heroImagePosition   Int        @default(50) // posición vertical 0-100 de heroImage
-  galleryImages       String[]   @default([]) // capturas del interior del PDF (3-4 sugeridas)
-  contentHighlights   Json       @default("[]") // tarjetas de "Qué vas a recibir": [{ "title": "...", "description": "..." }]
-  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text":
