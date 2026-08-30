@@ -15,7 +15,9 @@ export type ProductFormValues = {
   priceLabel: string;
   priceArs: number | null;
   amazonKindleUrl: string;
+  amazonKindlePrice: string;
   amazonPaperbackUrl: string;
+  amazonPaperbackPrice: string;
   lemonVariantId: string;
   coverImage: string;
   coverImagePosition: number;
@@ -31,7 +33,7 @@ export type ProductFormValues = {
 
 const emptyValues: ProductFormValues = {
   slug: "", title: "", description: "", priceLabel: "",
-  priceArs: null, amazonKindleUrl: "", amazonPaperbackUrl: "",
+  priceArs: null, amazonKindleUrl: "", amazonKindlePrice: "", amazonPaperbackUrl: "", amazonPaperbackPrice: "",
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
@@ -231,18 +233,33 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
             <input id="amazonKindleUrl" className={inputClass} value={values.amazonKindleUrl}
               onChange={(e) => set("amazonKindleUrl", e.target.value)}
               placeholder="https://www.amazon.com/dp/tu-ebook" />
-            <p className="mt-1.5 font-ui text-xs text-gold-dim">
-              Dejalo vacío si no vendés la versión Kindle en Amazon.
-            </p>
           </div>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
+            <label className={labelClass} htmlFor="amazonKindlePrice">Precio a mostrar (Kindle)</label>
+            <input id="amazonKindlePrice" className={inputClass} value={values.amazonKindlePrice}
+              onChange={(e) => set("amazonKindlePrice", e.target.value)}
+              placeholder="Ej. €5,99" />
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Dejalo vacío si no vendés la versión Kindle en Amazon.
+            </p>
+          </div>
+          <div>
             <label className={labelClass} htmlFor="amazonPaperbackUrl">Link tapa blanda (libro físico) en Amazon</label>
             <input id="amazonPaperbackUrl" className={inputClass} value={values.amazonPaperbackUrl}
               onChange={(e) => set("amazonPaperbackUrl", e.target.value)}
               placeholder="https://www.amazon.com/dp/tu-libro-fisico" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="amazonPaperbackPrice">Precio a mostrar (tapa blanda)</label>
+            <input id="amazonPaperbackPrice" className={inputClass} value={values.amazonPaperbackPrice}
+              onChange={(e) => set("amazonPaperbackPrice", e.target.value)}
+              placeholder="Ej. USD 14,99" />
             <p className="mt-1.5 font-ui text-xs text-gold-dim">
               Dejalo vacío si no vendés la versión impresa en Amazon.
             </p>
@@ -305,97 +322,4 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         {values.galleryImages.length > 0 && (
           <div className="flex flex-wrap gap-3">
             {values.galleryImages.map((url, i) => (
-              <div key={i} className="relative h-24 w-24 overflow-hidden rounded-lg border border-gold/20">
-                <img src={url} alt={`Captura ${i + 1}`} className="h-full w-full object-cover" />
-                <button type="button" onClick={() => removeGalleryImage(i)}
-                  className="absolute right-1 top-1 rounded-full bg-noir-bg/80 px-1.5 py-0.5 text-xs text-gold-pale hover:bg-wine/80">
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <label className={uploadBtnClass}>
-          {uploading === "gallery" ? "Subiendo…" : "+ Agregar captura"}
-          <input type="file" accept="image/*" className="hidden" onChange={onGalleryFileChange} />
-        </label>
-      </div>
-
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Qué vas a recibir (tarjetas de contenido)</p>
-
-        {values.contentHighlights.map((h, i) => (
-          <div key={i} className="space-y-2 rounded-lg border border-gold/15 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">Tarjeta {i + 1}</span>
-              <button type="button" onClick={() => removeHighlight(i)} className={removeBtnClass}>Quitar</button>
-            </div>
-            <input className={inputClass} placeholder="Título, ej. Orientación junguiana"
-              value={h.title} onChange={(e) => updateHighlight(i, "title", e.target.value)} />
-            <textarea className={inputClass} rows={2} placeholder="Descripción breve"
-              value={h.description} onChange={(e) => updateHighlight(i, "description", e.target.value)} />
-          </div>
-        ))}
-
-        <button type="button" onClick={addHighlight} className={addBtnClass}>+ Agregar tarjeta de contenido</button>
-      </div>
-
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Lo que dicen quienes ya lo leyeron (testimonios)</p>
-
-        {values.testimonials.map((t, i) => (
-          <div key={i} className="space-y-2 rounded-lg border border-gold/15 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">Testimonio {i + 1}</span>
-              <button type="button" onClick={() => removeTestimonial(i)} className={removeBtnClass}>Quitar</button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-              <input className={inputClass} placeholder="Nombre y apellido, o apodo"
-                value={t.name} onChange={(e) => updateTestimonial(i, "name", e.target.value)} />
-              <select className={inputClass} value={t.stars}
-                onChange={(e) => updateTestimonial(i, "stars", Number(e.target.value))}>
-                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} ★</option>)}
-              </select>
-              <input type="number" min={0} className={inputClass} placeholder="Compartido X veces"
-                value={t.shared} onChange={(e) => updateTestimonial(i, "shared", Number(e.target.value))} />
-            </div>
-            <textarea className={inputClass} rows={2} placeholder="Texto del testimonio"
-              value={t.text} onChange={(e) => updateTestimonial(i, "text", e.target.value)} />
-          </div>
-        ))}
-
-        <button type="button" onClick={addTestimonial} className={addBtnClass}>+ Agregar testimonio</button>
-      </div>
-
-      <div>
-        <label className={labelClass}>Archivo PDF</label>
-        <div className="flex items-center gap-3">
-          <input id="fileUrl" className={inputClass} value={values.fileUrl}
-            onChange={(e) => set("fileUrl", e.target.value)}
-            placeholder="Se completa al subir el PDF, o pegá la URL manualmente" />
-          <label className={uploadBtnClass}>
-            {uploading === "pdf" ? "Subiendo…" : "Subir PDF"}
-            <input type="file" accept="application/pdf" className="hidden" onChange={onPdfFileChange} />
-          </label>
-        </div>
-        <p className="mt-1.5 font-ui text-xs text-gold-dim">
-          Este archivo solo se muestra a quien ya compró el producto (se valida por email en /tienda).
-        </p>
-      </div>
-
-      <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
-        <input type="checkbox" checked={values.published}
-          onChange={(e) => set("published", e.target.checked)} className="h-4 w-4 accent-gold" />
-        Publicado (visible en /tienda)
-      </label>
-
-      <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={saving}
-          className="focus-ring rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60">
-          {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Crear producto"}
-        </button>
-      </div>
-    </form>
-  );
-}
+              <div key={i} className="relative h-24 w-24
