@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type ContentHighlight = { title: string; description: string };
 type Testimonial = { name: string; stars: number; text: string; shared: number };
 
+// Carrusel genérico con flechas sutiles y tildes (dots) abajo. Se usa tanto para
+// las tarjetas de "Qué vas a recibir" como para las capturas de "Un vistazo por dentro".
 function Carousel({
   itemCount,
   renderItem,
@@ -122,6 +124,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
   const [testiIndex, setTestiIndex] = useState(0);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payError, setPayError] = useState("");
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const openProduct = useMemo(
     () => products.find((p) => p.id === openId) ?? null,
@@ -396,13 +399,18 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     itemCount={openProduct.galleryImages.length}
                     itemClassName="w-[55%] sm:w-1/3 lg:w-1/4"
                     renderItem={(i) => (
-                      <div className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/15 transition hover:scale-[1.03]">
+                      <button
+                        type="button"
+                        onClick={() => setLightboxImage(openProduct.galleryImages[i])}
+                        className="focus-ring block aspect-[3/4] w-full overflow-hidden rounded-lg border border-gold/15 transition hover:scale-[1.03]"
+                        aria-label="Ampliar imagen"
+                      >
                         <img
                           src={openProduct.galleryImages[i]}
                           alt={`Página interior ${i + 1}`}
                           className="h-full w-full object-cover"
                         />
-                      </div>
+                      </button>
                     )}
                   />
                 </div>
@@ -487,6 +495,29 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
           )}
         </div>
       </div>
+
+      {/* Vista ampliada de una captura, sin salir de la ficha del producto */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-noir-bg/95 p-4 sm:p-10"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            aria-label="Cerrar"
+            className="focus-ring absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-gold/40 text-xl text-gold-pale hover:border-gold hover:text-gold sm:right-8 sm:top-8"
+          >
+            ✕
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Vista ampliada"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-[0_0_60px_rgba(0,0,0,0.6)]"
+          />
+        </div>
+      )}
     </div>
   );
 }
