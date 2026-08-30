@@ -1,162 +1,102 @@
-// Zodiac Noir — modelo de datos
-// Motor recomendado: PostgreSQL (Vercel Postgres, Neon o Supabase)
+// Integración con Mercado Pago — Checkout Pro (vía API de Preferencias).
+// Documentación: https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/overview
 
-generator client {
-  provider = "prisma-client-js"
+const MP_API_BASE = "https://api.mercadopago.com";
+
+function getAccessToken(): string {
+  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!token) throw new Error("Falta la variable de entorno MERCADOPAGO_ACCESS_TOKEN");
+  return token;
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+function getSiteUrl(): string {
+  return process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
 }
 
-// ---------- Autenticación (NextAuth / Google) ----------
+type CreatePreferenceParams = {
+  productId: string;
+  title: string;
+  priceArs: number;
+  buyerEmail?: string | null;
+};
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  accounts      Account[]
-  sessions      Session[]
+/**
+ * Crea una preferencia de pago en Mercado Pago y devuelve la URL de checkout
+ * (init_point) a la que hay que redirigir al comprador.
+ */
+export async function createPreference({
+  productId,
+  title,
+  priceArs,
+  buyerEmail,
+}: CreatePreferenceParams): Promise<{ id: string; initPoint: string }> {
+  const siteUrl = getSiteUrl();
+
+  const body: Record<string, unknown> = {
+    items: [
+      {
+        id: productId,
+        title,
+        quantity: 1,
+        currency_id: "ARS",
+        unit_price: priceArs,
+      },
+    ],
+    external_reference: productId,
+    back_urls: {
+      success: `${siteUrl}/tienda?compra=1`,
+      pending: `${siteUrl}/tienda?compra=pendiente`,
+      failure: `${siteUrl}/tienda?compra=error`,
+    },
+    auto_return: "approved",
+    notification_url: `${siteUrl}/api/mercadopago/webhook`,
+  };
+
+  if (buyerEmail) {
+    body.payer = { email: buyerEmail };
+  }
+
+  const res = await fetch(`${MP_API_BASE}/checkout/preferences`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Error creando preferencia de Mercado Pago:", res.status, errorText);
+    throw new Error("No se pudo crear la preferencia de pago en Mercado Pago.");
+  }
+
+  const data = await res.json();
+  return { id: data.id, initPoint: data.init_point };
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+export type MercadoPagoPayment = {
+  id: number;
+  status: string; // approved | pending | rejected | refunded | cancelled | in_process
+  external_reference: string | null;
+  payer?: { email?: string | null };
+};
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+/**
+ * Consulta el estado real de un pago directamente contra la API de Mercado Pago,
+ * usando nuestro propio Access Token. No confiamos en los datos que llegan en el
+ * webhook: los usamos solo para saber QUÉ pago consultar, no para decidir si es válido.
+ */
+export async function getPayment(paymentId: string): Promise<MercadoPagoPayment> {
+  const res = await fetch(`${MP_API_BASE}/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+  });
 
-  @@unique([provider, providerAccountId])
-}
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Error consultando pago de Mercado Pago:", res.status, errorText);
+    throw new Error("No se pudo consultar el pago en Mercado Pago.");
+  }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-// ---------- Newsletter ----------
-
-model Subscriber {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  confirmed        Boolean   @default(false)
-  unsubscribeToken String    @unique @default(cuid())
-  createdAt        DateTime  @default(now())
-  confirmedAt      DateTime?
-}
-
-// ---------- Monetización (Lemon Squeezy) ----------
-
-// Un plan de membresía (ej. "Mensual", "Anual"). Los precios reales viven en Lemon Squeezy;
-// acá solo guardamos la referencia para armar los botones de compra y mostrar el estado.
-model MembershipPlan {
-  id             String         @id @default(cuid())
-  name           String
-  slug           String         @unique
-  description    String
-  priceLabel     String // texto a mostrar, ej. "USD 7/mes"
-  interval       String // "mes" | "año"
-  lemonVariantId String // ID de la variante en Lemon Squeezy
-  featured       Boolean        @default(false)
-  benefits       String // lista separada por "|"
-  createdAt      DateTime       @default(now())
-  subscriptions  Subscription[]
-}
-
-// Estado de la membresía paga de una persona, sincronizado vía webhook de Lemon Squeezy.
-model Subscription {
-  id                  String          @id @default(cuid())
-  email               String          @unique
-  status              String // active | on_trial | past_due | cancelled | expired
-  lemonSubscriptionId String          @unique
-  lemonCustomerId     String?
-  renewsAt            DateTime?
-  endsAt              DateTime?
-  plan                MembershipPlan? @relation(fields: [planId], references: [id])
-  planId              String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-}
-
-// Un producto digital (principalmente PDFs) vendido como pago único.
-model Product {
-  id                  String     @id @default(cuid())
-  slug                String     @unique
-  title               String
-  description         String
-  priceLabel          String // texto a mostrar, ej. "USD 9"
-  priceArs            Int? // precio en pesos argentinos, en unidades enteras (ej. 12990). Usado para cobrar por Mercado Pago.
-  amazonUrl           String? // link a la página del producto en Amazon (envío físico o Kindle)
-  lemonVariantId      String // ID de la variante en Lemon Squeezy
-  coverImage          String? // imagen cuadrada de la tarjeta en /tienda
-  coverImagePosition  Int        @default(50) // posición vertical 0-100 de coverImage
-  heroImage           String? // imagen grande de la ficha completa
-  heroImagePosition   Int        @default(50) // posición vertical 0-100 de heroImage
-  galleryImages       String[]   @default([]) // capturas del interior del PDF (3-4 sugeridas)
-  contentHighlights   Json       @default("[]") // tarjetas de "Qué vas a recibir": [{ "title": "...", "description": "..." }]
-  testimonials        Json       @default("[]") // [{ "name": "...", "stars": 5, "text": "...", "shared": 12 }]
-  audienceText        String? // párrafo "Para quién es esto"
-  fileUrl             String? // URL privada del PDF (Vercel Blob), se entrega tras el pago
-  published           Boolean    @default(true)
-  createdAt           DateTime   @default(now())
-  purchases           Purchase[]
-}
-
-// Registro de compras únicas (PDFs), sincronizado vía webhook de Lemon Squeezy o Mercado Pago.
-model Purchase {
-  id                   String   @id @default(cuid())
-  email                String
-  product              Product  @relation(fields: [productId], references: [id])
-  productId            String
-  provider             String   @default("lemonsqueezy") // "lemonsqueezy" | "mercadopago"
-  lemonOrderId         String?  @unique
-  mercadoPagoPaymentId String?  @unique
-  status               String // paid | refunded
-  createdAt            DateTime @default(now())
-
-  @@index([email])
-}
-
-// ---------- Contenido editorial ----------
-
-model Article {
-  id             String    @id @default(cuid())
-  slug           String    @unique
-  title          String
-  excerpt        String
-  content        String    @db.Text
-  coverImage     String?
-  category       String // efemerides | signos | tarot | psicologia-astrologica
-  sign           String? // signo del zodiaco relacionado, si aplica
-  authorName     String
-  authorRole     String
-  readingTimeMin Int
-  published      Boolean   @default(false)
-  publishedAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  return res.json();
 }
