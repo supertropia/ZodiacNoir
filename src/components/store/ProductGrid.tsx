@@ -10,6 +10,8 @@ export type ProductViewModel = {
   title: string;
   description: string;
   priceLabel: string;
+  priceArs: number | null;
+  amazonUrl: string | null;
   coverImage: string | null;
   coverImagePosition: number;
   heroImage: string | null;
@@ -27,6 +29,8 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [testiIndex, setTestiIndex] = useState(0);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [payError, setPayError] = useState("");
 
   const openProduct = useMemo(
     () => products.find((p) => p.id === openId) ?? null,
@@ -52,6 +56,24 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
 
   const openLanding = (id: string) => {
     setOpenId((current) => (current === id ? null : id));
+  };
+
+  const payWithMercadoPago = async (productId: string) => {
+    setPayingId(productId);
+    setPayError("");
+    try {
+      const res = await fetch("/api/mercadopago/create-preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo iniciar el pago.");
+      window.location.href = data.url;
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : "No se pudo iniciar el pago.");
+      setPayingId(null);
+    }
   };
 
   const shareUrl =
@@ -260,32 +282,28 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
               <div className="mt-8">
                 <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">Compartir</h4>
                 <div className="flex flex-wrap gap-2.5">
-                  
-                    <a target="_blank"
+                  <a target="_blank"
                     rel="noreferrer"
                     href={`https://wa.me/?text=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}%20${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
                   >
                     WhatsApp
                   </a>
-                  
-                    <a target="_blank"
+                  <a target="_blank"
                     rel="noreferrer"
                     href="https://www.instagram.com/"
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
                   >
                     Instagram
                   </a>
-                  
-                    <a target="_blank"
+                  <a target="_blank"
                     rel="noreferrer"
                     href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&url=${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
                   >
                     X
                   </a>
-                  
-                    <a href={`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
+                  <a href={`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
                     className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
                   >
                     Correo
@@ -293,29 +311,60 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                 </div>
               </div>
 
+              {payError && (
+                <p className="mt-6 font-ui text-sm text-wine-bright">{payError}</p>
+              )}
+
               <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-gold/15 pt-6">
                 <span className="font-ui text-2xl font-medium text-gold-bright">{openProduct.priceLabel}</span>
 
-                {openProduct.owned && openProduct.fileUrl ? (
-                  
-                   <a href={openProduct.fileUrl}
-                    className="focus-ring rounded-full border border-gold px-7 py-3 font-ui text-sm uppercase tracking-wide text-gold hover:bg-gold/10"
-                  >
-                    Descargar PDF
-                  </a>
-                ) : openProduct.checkoutUrl ? (
-                  
-                    <a href={openProduct.checkoutUrl}
-                    className="focus-ring rounded-full bg-gold px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-                  >
-                    Comprar guía completa
-                  </a>
-                ) : (
-                  <p className="font-ui text-xs text-gold-dim">Falta configurar LEMONSQUEEZY_STORE.</p>
-                )}
+                <div className="flex flex-wrap gap-3">
+                  {openProduct.owned && openProduct.fileUrl && (
+                    <a href={openProduct.fileUrl}
+                      className="focus-ring rounded-full border border-gold px-7 py-3 font-ui text-sm uppercase tracking-wide text-gold hover:bg-gold/10"
+                    >
+                      Descargar PDF
+                    </a>
+                  )}
+
+                  {!openProduct.owned && openProduct.priceArs && (
+                    <button
+                      type="button"
+                      disabled={payingId === openProduct.id}
+                      onClick={() => payWithMercadoPago(openProduct.id)}
+                      className="focus-ring rounded-full bg-gold px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+                    >
+                      {payingId === openProduct.id ? "Redirigiendo…" : "Descargar eBook · Mercado Pago"}
+                    </button>
+                  )}
+
+                  {openProduct.amazonUrl && (
+                    <a target="_blank"
+                      rel="noreferrer"
+                      href={openProduct.amazonUrl}
+                      className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm uppercase tracking-wide text-gold-pale hover:bg-gold/10"
+                    >
+                      Comprar en Amazon
+                    </a>
+                  )}
+
+                  {!openProduct.owned && !openProduct.priceArs && !openProduct.amazonUrl && (
+                    <p className="font-ui text-xs text-gold-dim">
+                      Este producto todavía no tiene una forma de pago configurada.
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {openProduct.amazonUrl && (
+                <p className="mt-3 text-center font-ui text-xs text-gold-dim">
+                  Comprando en Amazon podés elegir envío físico o versión Kindle, disponible en la mayoría
+                  de los países. La disponibilidad de envío y los tiempos de entrega dependen
+                  exclusivamente de Amazon según tu ubicación.
+                </p>
+              )}
               <p className="mt-3 text-center font-ui text-xs text-gold-dim">
-                Descarga inmediata en PDF apenas se confirma el pago.
+                El eBook se descarga apenas se confirma el pago.
               </p>
             </div>
           )}
