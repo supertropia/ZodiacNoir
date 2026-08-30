@@ -79,7 +79,8 @@ export default async function TiendaPage({
             <>
               ¡Gracias por tu compra! Revisá el correo electrónico que usaste al pagar en Mercado
               Pago — ahí te enviamos el link de descarga de tu PDF apenas se confirme el pago
-              (puede tardar unos minutos, y a veces llega a la carpeta de spam).
+              (puede tardar unos minutos). <strong>Si no lo ves en tu bandeja de entrada, revisá
+              la carpeta de spam o correo no deseado</strong>, a veces llega ahí.
             </>
           )}
         </div>
