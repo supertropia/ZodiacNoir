@@ -11,7 +11,8 @@ export type ProductViewModel = {
   description: string;
   priceLabel: string;
   priceArs: number | null;
-  amazonUrl: string | null;
+  amazonKindleUrl: string | null;
+  amazonPaperbackUrl: string | null;
   coverImage: string | null;
   coverImagePosition: number;
   heroImage: string | null;
@@ -338,17 +339,8 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                     </button>
                   )}
 
-                  {openProduct.amazonUrl && (
-                    <a target="_blank"
-                      rel="noreferrer"
-                      href={openProduct.amazonUrl}
-                      className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm uppercase tracking-wide text-gold-pale hover:bg-gold/10"
-                    >
-                      Comprar en Amazon
-                    </a>
-                  )}
-
-                  {!openProduct.owned && !openProduct.priceArs && !openProduct.amazonUrl && (
+                  {!openProduct.owned && !openProduct.priceArs &&
+                    !openProduct.amazonKindleUrl && !openProduct.amazonPaperbackUrl && (
                     <p className="font-ui text-xs text-gold-dim">
                       Este producto todavía no tiene una forma de pago configurada.
                     </p>
@@ -356,12 +348,36 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
                 </div>
               </div>
 
-              {openProduct.amazonUrl && (
-                <p className="mt-3 text-center font-ui text-xs text-gold-dim">
-                  Comprando en Amazon podés elegir envío físico o versión Kindle, disponible en la mayoría
-                  de los países. La disponibilidad de envío y los tiempos de entrega dependen
-                  exclusivamente de Amazon según tu ubicación.
-                </p>
+              {(openProduct.amazonKindleUrl || openProduct.amazonPaperbackUrl) && (
+                <div className="mt-6 rounded-xl border border-gold/15 bg-noir-surface2/40 p-5">
+                  <h4 className="font-display text-sm uppercase tracking-wide text-gold-bright">
+                    Adquirir en Amazon
+                  </h4>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {openProduct.amazonKindleUrl && (
+                      <a target="_blank"
+                        rel="noreferrer"
+                        href={openProduct.amazonKindleUrl}
+                        className="focus-ring rounded-full border border-gold/40 px-6 py-2.5 font-ui text-sm uppercase tracking-wide text-gold-pale hover:bg-gold/10"
+                      >
+                        Kindle (digital)
+                      </a>
+                    )}
+                    {openProduct.amazonPaperbackUrl && (
+                      <a target="_blank"
+                        rel="noreferrer"
+                        href={openProduct.amazonPaperbackUrl}
+                        className="focus-ring rounded-full border border-gold/40 px-6 py-2.5 font-ui text-sm uppercase tracking-wide text-gold-pale hover:bg-gold/10"
+                      >
+                        Quiero el libro físico
+                      </a>
+                    )}
+                  </div>
+                  <p className="mt-3 font-ui text-xs text-gold-dim">
+                    La disponibilidad de envío y los tiempos de entrega dependen exclusivamente de
+                    Amazon según tu ubicación.
+                  </p>
+                </div>
               )}
               <p className="mt-3 text-center font-ui text-xs text-gold-dim">
                 El eBook se descarga apenas se confirma el pago.
