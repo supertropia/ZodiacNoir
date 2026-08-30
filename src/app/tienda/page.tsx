@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function TiendaPage({
   searchParams,
 }: {
-  searchParams: { compra?: string };
+  searchParams: { compra?: string; producto?: string };
 }) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
@@ -37,6 +37,7 @@ export default async function TiendaPage({
 
       return {
         id: product.id,
+        slug: product.slug,
         title: product.title,
         description: product.description,
         priceLabel: product.priceLabel,
@@ -102,7 +103,7 @@ export default async function TiendaPage({
           Todavía no hay productos cargados. Creá uno nuevo desde <code>/admin/productos/nuevo</code>.
         </div>
       ) : (
-        <ProductGrid products={viewModels} />
+        <ProductGrid products={viewModels} initialProductSlug={searchParams?.producto} />
       )}
     </div>
   );
