@@ -5,8 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type ContentHighlight = { title: string; description: string };
 type Testimonial = { name: string; stars: number; text: string; shared: number };
 
-// Carrusel genérico con flechas sutiles y tildes (dots) abajo. Se usa tanto para
-// las tarjetas de "Qué vas a recibir" como para las capturas de "Un vistazo por dentro".
 function Carousel({
   itemCount,
   renderItem,
@@ -97,6 +95,7 @@ function Carousel({
 
 export type ProductViewModel = {
   id: string;
+  slug: string;
   title: string;
   description: string;
   priceLabel: string;
@@ -118,13 +117,32 @@ export type ProductViewModel = {
   checkoutUrl: string | null;
 };
 
-export function ProductGrid({ products }: { products: ProductViewModel[] }) {
+export function ProductGrid({
+  products,
+  initialProductSlug,
+}: {
+  products: ProductViewModel[];
+  initialProductSlug?: string;
+}) {
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [testiIndex, setTestiIndex] = useState(0);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payError, setPayError] = useState("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const fichaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!initialProductSlug) return;
+    const match = products.find((p) => p.slug === initialProductSlug);
+    if (match) {
+      setOpenId(match.id);
+      setTimeout(() => {
+        fichaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProductSlug]);
 
   const openProduct = useMemo(
     () => products.find((p) => p.id === openId) ?? null,
@@ -247,6 +265,7 @@ export function ProductGrid({ products }: { products: ProductViewModel[] }) {
 
       {/* Ficha completa compartida */}
       <div
+        ref={fichaRef}
         className={`grid overflow-hidden rounded-2xl border border-gold/20 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 ${
           openProduct ? "mt-9 grid-rows-[1fr]" : "mt-0 grid-rows-[0fr] border-transparent"
         }`}
