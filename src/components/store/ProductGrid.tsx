@@ -296,6 +296,12 @@ export function ProductGrid({
                     <img
                       src={openProduct.heroImage}
                       alt={openProduct.title}
+                      onLoad={() => {
+                        // La imagen de portada es alta y tarda en cargar; una vez que carga,
+                        // la ficha crece y el título se corre hacia abajo. Recalculamos el
+                        // scroll acá para que el título y los botones de compra queden visibles.
+                        detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
                       className="h-full w-full object-cover"
                       style={{ objectPosition: `center ${openProduct.heroImagePosition}%` }}
                     />
