@@ -7,7 +7,7 @@ import { ProductGrid, type ProductViewModel } from "@/components/store/ProductGr
 
 export const metadata = {
   title: "Tienda",
-  description: "PDFs de astrología, tarot y efemérides para descargar: guías de tránsitos, cartas natales y más.",
+  description: "E-books y material descargable de astrología, tarot y efemérides: guías de tránsitos, cartas natales y más.",
   alternates: { canonical: "/tienda" },
 };
 
@@ -64,7 +64,7 @@ export default async function TiendaPage({
   return (
     <div className="mx-auto max-w-6xl px-5 py-16">
       <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Tienda</p>
-      <h1 className="mt-2 font-display text-4xl text-gold-pale">PDFs y guías descargables</h1>
+      <h1 className="mt-2 font-display text-4xl text-gold-pale">E-books y material descargable</h1>
       <p className="mt-4 max-w-2xl font-body text-lg text-gold-pale/85">
         Pago único, entrega inmediata al confirmarse el pago.
       </p>
