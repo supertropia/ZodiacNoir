@@ -167,7 +167,15 @@ export function ProductGrid({
   };
 
   const openLanding = (id: string) => {
+    const willOpen = openId !== id;
     setOpenId((current) => (current === id ? null : id));
+    if (willOpen) {
+      // Esperamos un instante a que la ficha se monte/expanda antes de scrollear,
+      // así el usuario ve la descripción del producto de inmediato al tocar "+ info".
+      setTimeout(() => {
+        fichaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    }
   };
 
   const payWithMercadoPago = async (productId: string) => {
@@ -266,7 +274,7 @@ export function ProductGrid({
       {/* Ficha completa compartida */}
       <div
         ref={fichaRef}
-        className={`grid overflow-hidden rounded-2xl border border-gold/20 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 ${
+        className={`grid scroll-mt-36 overflow-hidden rounded-2xl border border-gold/20 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 sm:scroll-mt-24 ${
           openProduct ? "mt-9 grid-rows-[1fr]" : "mt-0 grid-rows-[0fr] border-transparent"
         }`}
       >
