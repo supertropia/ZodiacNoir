@@ -131,6 +131,7 @@ export function ProductGrid({
   const [payError, setPayError] = useState("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const fichaRef = useRef<HTMLDivElement>(null);
+  const detalleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!initialProductSlug) return;
@@ -138,7 +139,7 @@ export function ProductGrid({
     if (match) {
       setOpenId(match.id);
       setTimeout(() => {
-        fichaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,7 +174,7 @@ export function ProductGrid({
       // Esperamos un instante a que la ficha se monte/expanda antes de scrollear,
       // así el usuario ve la descripción del producto de inmediato al tocar "+ info".
       setTimeout(() => {
-        fichaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 120);
     }
   };
@@ -300,7 +301,7 @@ export function ProductGrid({
                     />
                   )}
                 </div>
-                <div>
+                <div ref={detalleRef} className="scroll-mt-36 sm:scroll-mt-24">
                   <h2 className="font-display text-2xl leading-tight text-gold-pale">{openProduct.title}</h2>
                   <p className="mt-3 font-body text-lg leading-relaxed text-gold-pale/80">
                     {openProduct.description}
