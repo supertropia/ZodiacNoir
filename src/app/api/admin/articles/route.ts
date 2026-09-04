@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { estimateReadingMinutes } from "@/lib/slugify";
+import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -28,18 +29,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ya existe un artículo con ese slug." }, { status: 409 });
     }
 
+    const cleanContent = sanitizeArticleHtml(content);
+
     const article = await prisma.article.create({
       data: {
         slug,
         title,
         excerpt,
-        content,
+        content: cleanContent,
         coverImage: coverImage || null,
         category,
         sign: sign || null,
         authorName: "Zodiac Noir",
         authorRole: "Equipo editorial",
-        readingTimeMin: estimateReadingMinutes(content),
+        readingTimeMin: estimateReadingMinutes(htmlToPlainText(cleanContent)),
         published: Boolean(published),
         publishedAt: published ? new Date() : null,
       },
