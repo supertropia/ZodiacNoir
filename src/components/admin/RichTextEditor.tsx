@@ -2,7 +2,9 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect } from "react";
+import Image from "@tiptap/extension-image";
+import { useEffect, useRef } from "react";
+import { repairPastedPlainText } from "@/lib/legacy-content";
 
 // Editor visual del contenido del artículo.
 // Soporta: párrafos, **negrita real** (<strong>), subtítulos H2 y cita
@@ -42,10 +44,13 @@ function ToolbarButton({
 export function RichTextEditor({
   value,
   onChange,
+  onImageUpload,
 }: {
   value: string;
   onChange: (html: string) => void;
+  onImageUpload: (file: File) => Promise<string | null>;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -59,6 +64,10 @@ export function RichTextEditor({
         blockquote: {
           HTMLAttributes: { class: "pull-quote" },
         },
+      }),
+      Image.configure({
+        HTMLAttributes: { class: "article-image" },
+        allowBase64: false,
       }),
     ],
     content: value || "<p></p>",
@@ -115,6 +124,42 @@ export function RichTextEditor({
           onClick={() => editor.chain().focus().setParagraph().run()}
         >
           Párrafo normal
+        </ToolbarButton>
+        <ToolbarButton
+          label="Insertar imagen"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          + Imagen
+        </ToolbarButton>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            const url = await onImageUpload(file);
+            if (url) {
+              editor.chain().focus().setImage({ src: url, alt: "" }).run();
+            }
+          }}
+        />
+        <span className="mx-1 w-px self-stretch bg-gold/20" aria-hidden="true" />
+        <ToolbarButton
+          label="Reparar texto pegado"
+          onClick={() => {
+            const ok = window.confirm(
+              "Esto va a reformatear todo el texto actual del editor (útil si pegaste un artículo y quedó con ** o todo junto). Podés revisar el resultado antes de guardar. ¿Continuar?"
+            );
+            if (!ok) return;
+            const rawText = editor.getText({ blockSeparator: "\n\n" });
+            const repairedHtml = repairPastedPlainText(rawText);
+            editor.commands.setContent(repairedHtml, false);
+          }}
+        >
+          🩹 Reparar texto pegado
         </ToolbarButton>
       </div>
       <EditorContent editor={editor} />
