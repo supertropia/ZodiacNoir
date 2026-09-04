@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slugify";
+import { RichTextEditor } from "./RichTextEditor";
 
 export type ArticleFormValues = {
   id?: string;
@@ -47,9 +48,7 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const contentRef = useRef<HTMLTextAreaElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const inlineInputRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof ArticleFormValues>(key: K, value: ArticleFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -85,22 +84,17 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
     e.target.value = "";
   };
 
-  const onInlineFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = await uploadImage(file);
-    if (url && contentRef.current) {
-      const textarea = contentRef.current;
-      const cursor = textarea.selectionStart ?? values.content.length;
-      const snippet = `\n\n![Descripción de la imagen](${url})\n\n`;
-      const newContent = values.content.slice(0, cursor) + snippet + values.content.slice(cursor);
-      set("content", newContent);
-    }
-    e.target.value = "";
+  const isContentEmpty = (html: string) => {
+    const text = html.replace(/<[^>]*>/g, "").trim();
+    return text.length === 0;
   };
 
   const onSubmit = async (e: FormEvent, publishOverride?: boolean) => {
     e.preventDefault();
+    if (isContentEmpty(values.content)) {
+      setError("El contenido del artículo no puede quedar vacío.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -233,31 +227,8 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
       </div>
 
       <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className={labelClass + " mb-0"} htmlFor="content">Contenido</label>
-          <button
-            type="button"
-            onClick={() => inlineInputRef.current?.click()}
-            disabled={uploading}
-            className="rounded-full border border-gold/40 px-3 py-1 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
-          >
-            {uploading ? "Subiendo…" : "+ Insertar imagen aquí"}
-          </button>
-          <input ref={inlineInputRef} type="file" accept="image/*" className="hidden" onChange={onInlineFileChange} />
-        </div>
-        <textarea
-          id="content"
-          ref={contentRef}
-          required
-          rows={16}
-          className={inputClass + " font-body text-base leading-relaxed"}
-          value={values.content}
-          onChange={(e) => set("content", e.target.value)}
-          placeholder={"Escribí cada párrafo separado por una línea en blanco.\n\nPodés usar **negrita**, *cursiva*, [enlaces](https://...) e insertar imágenes con el botón de arriba."}
-        />
-        <p className="mt-1.5 font-ui text-xs text-gold-dim">
-          Separá los párrafos con una línea en blanco. Admite **negrita**, *cursiva*, [enlace](url) e imágenes.
-        </p>
+        <label className={labelClass} htmlFor="content">Contenido</label>
+        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} />
       </div>
 
       <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
