@@ -228,7 +228,7 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
 
       <div>
         <label className={labelClass} htmlFor="content">Contenido</label>
-        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} />
+        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} onImageUpload={uploadImage} />
       </div>
 
       <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
