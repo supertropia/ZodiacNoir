@@ -5,7 +5,7 @@ import { prisma, safeQuery } from "@/lib/prisma";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ListenButton } from "@/components/ListenButton";
 import { ArticleCard } from "@/components/ArticleCard";
-import { renderArticleContent, stripToPlainText } from "@/lib/content";
+import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
   const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
   const url = `${siteUrl}/articulos/${article.slug}`;
-  const plainText = `${article.title}. ${stripToPlainText(article.content)}`;
+  const plainText = `${article.title}. ${htmlToPlainText(article.content)}`;
 
   const related = await safeQuery(() =>
     prisma.article.findMany({
@@ -74,14 +74,15 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         <ListenButton text={plainText} />
       </div>
 
-      <div className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90">
-        {renderArticleContent(article.content)}
-      </div>
-
-      <div className="mt-8 flex items-center justify-between border-t border-gold/15 pt-8">
-        <p className="font-ui text-sm text-gold-dim">Compartir</p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-gold/15 pb-6">
+        <p className="font-ui text-sm text-gold-dim">Comparte este artículo</p>
         <ShareButtons url={url} title={article.title} />
       </div>
+
+      <div
+        className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90"
+        dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(article.content) }}
+      />
 
       {related.length > 0 && (
         <div className="mt-16">
