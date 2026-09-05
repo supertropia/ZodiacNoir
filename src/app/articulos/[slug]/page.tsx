@@ -47,8 +47,6 @@ export default async function ArticlePage({ params }: { params: { slug: string }
     })
   );
 
-  // Si el artículo tiene un producto destacado asignado a mano, mostramos solo ese.
-  // Si no, mostramos todos los productos de la tienda como respaldo.
   const featuredProducts = article.featuredProduct
     ? [article.featuredProduct]
     : await safeQuery(() =>
@@ -109,15 +107,15 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       />
 
       {(related.length > 0 || featuredProducts.length > 0) && (
-        <div className="mt-16 grid gap-10 sm:grid-cols-2">
+        <div className="mt-16 grid items-stretch gap-10 sm:grid-cols-2">
           {related.length > 0 && (
-            <div>
+            <div className="flex flex-col">
               <h2 className="mb-6 font-display text-2xl text-gold-pale">También te puede interesar</h2>
               <RelatedArticlesCarousel articles={related} />
             </div>
           )}
           {featuredProducts.length > 0 && (
-            <div>
+            <div className="flex flex-col">
               <h2 className="mb-6 font-display text-2xl text-gold-pale">Completá tu lectura</h2>
               <ProductsCarousel products={featuredProducts} />
             </div>
