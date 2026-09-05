@@ -83,8 +83,6 @@ export function RichTextEditor({
     },
   });
 
-  // Si el valor cambia desde afuera (ej: al cargar un artículo existente
-  // para editar), sincronizamos el editor una sola vez.
   useEffect(() => {
     if (editor && value && editor.getHTML() !== value) {
       editor.commands.setContent(value, false);
@@ -96,7 +94,7 @@ export function RichTextEditor({
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap gap-2 rounded-lg border border-gold/15 bg-noir-surface/40 p-2">
+      <div className="sticky top-14 z-20 mb-2 flex flex-wrap gap-2 rounded-lg border border-gold/20 bg-noir-bg/95 p-2 shadow-lg shadow-black/40 backdrop-blur">
         <ToolbarButton
           label="Negrita"
           active={editor.isActive("bold")}
@@ -166,7 +164,8 @@ export function RichTextEditor({
       <p className="mt-1.5 font-ui text-xs text-gold-dim">
         Seleccioná texto y usá los botones de arriba. "+ Subtítulo" convierte la línea completa en un
         encabezado H2; "+ Cita destacada" la convierte en una cita resaltada. Para volver a texto normal,
-        parate en esa línea y usá "Párrafo normal".
+        parate en esa línea y usá "Párrafo normal". Para borrar una imagen ya insertada, hacé click sobre
+        ella y apretá Suprimir/Delete.
       </p>
     </div>
   );
