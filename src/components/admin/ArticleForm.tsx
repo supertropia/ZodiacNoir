@@ -16,6 +16,7 @@ export type ArticleFormValues = {
   category: string;
   sign: string;
   published: boolean;
+  featuredProductId: string;
 };
 
 const SIGNS = [
@@ -23,7 +24,13 @@ const SIGNS = [
   "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis",
 ];
 
-export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
+export function ArticleForm({
+  initial,
+  products,
+}: {
+  initial?: ArticleFormValues;
+  products: { id: string; title: string }[];
+}) {
   const router = useRouter();
   const isEditing = Boolean(initial?.id);
   const [values, setValues] = useState<ArticleFormValues>(
@@ -36,6 +43,7 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
       category: "efemerides",
       sign: "",
       published: false,
+      featuredProductId: "",
     }
   );
   const [slugTouched, setSlugTouched] = useState(isEditing);
@@ -218,6 +226,25 @@ export function ArticleForm({ initial }: { initial?: ArticleFormValues }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={values.coverImage} alt="" className="mt-3 h-32 w-full rounded-lg border border-gold/20 object-cover" />
         )}
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="featuredProductId">
+          Producto destacado (opcional) — se muestra en una tarjeta al pie del artículo, invitando a comprarlo
+        </label>
+        <select
+          id="featuredProductId"
+          className={inputClass}
+          value={values.featuredProductId}
+          onChange={(e) => set("featuredProductId", e.target.value)}
+        >
+          <option value="" className="bg-noir-surface">— Ninguno (se muestran todos los productos) —</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id} className="bg-noir-surface">
+              {p.title}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
