@@ -5,6 +5,7 @@ import { prisma, safeQuery } from "@/lib/prisma";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ListenButton } from "@/components/ListenButton";
 import { RelatedArticlesCarousel } from "@/components/RelatedArticlesCarousel";
+import { ProductsCarousel } from "@/components/store/ProductsCarousel";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 import { ensureHtmlContent } from "@/lib/legacy-content";
 import { getCategoryLabel } from "@/lib/categories";
@@ -28,7 +29,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = await safeQuery(() => prisma.article.findUnique({ where: { slug: params.slug } }));
+  const article = await safeQuery(() =>
+    prisma.article.findUnique({ where: { slug: params.slug }, include: { featuredProduct: true } })
+  );
   if (!article || !article.published) notFound();
 
   const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
@@ -43,6 +46,18 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       take: 8,
     })
   );
+
+  // Si el artículo tiene un producto destacado asignado a mano, mostramos solo ese.
+  // Si no, mostramos todos los productos de la tienda como respaldo.
+  const featuredProducts = article.featuredProduct
+    ? [article.featuredProduct]
+    : await safeQuery(() =>
+        prisma.product.findMany({
+          where: { published: true },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+        })
+      );
 
   const date = new Date(article.publishedAt ?? article.createdAt).toLocaleDateString("es-AR", {
     day: "numeric",
@@ -73,6 +88,12 @@ export default async function ArticlePage({ params }: { params: { slug: string }
             Por <span className="text-gold">Zodiac Noir</span>
           </p>
           <p className="text-gold-dim">{date} · {article.readingTimeMin} min de lectura</p>
+          <Link
+            href="/membresia"
+            className="focus-ring mt-2 inline-block rounded-full border border-gold/40 px-4 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10"
+          >
+            Membresía
+          </Link>
         </div>
         <ListenButton text={plainText} />
       </div>
@@ -87,10 +108,20 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(htmlContent) }}
       />
 
-      {related.length > 0 && (
-        <div className="mt-16">
-          <h2 className="mb-6 font-display text-2xl text-gold-pale">También te puede interesar</h2>
-          <RelatedArticlesCarousel articles={related} />
+      {(related.length > 0 || featuredProducts.length > 0) && (
+        <div className="mt-16 grid gap-10 sm:grid-cols-2">
+          {related.length > 0 && (
+            <div>
+              <h2 className="mb-6 font-display text-2xl text-gold-pale">También te puede interesar</h2>
+              <RelatedArticlesCarousel articles={related} />
+            </div>
+          )}
+          {featuredProducts.length > 0 && (
+            <div>
+              <h2 className="mb-6 font-display text-2xl text-gold-pale">Completá tu lectura</h2>
+              <ProductsCarousel products={featuredProducts} />
+            </div>
+          )}
         </div>
       )}
 
