@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   try {
     const body = await req.json();
-    const { slug, title, excerpt, content, coverImage, category, sign, published } = body;
+    const { slug, title, excerpt, content, coverImage, category, sign, published, featuredProductId } = body;
 
     if (!slug || !title || !excerpt || !content || !category) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
@@ -50,6 +50,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         readingTimeMin: estimateReadingMinutes(htmlToPlainText(cleanContent)),
         published: Boolean(published),
         publishedAt: published ? current.publishedAt ?? new Date() : null,
+        featuredProductId: featuredProductId || null,
       },
     });
 
