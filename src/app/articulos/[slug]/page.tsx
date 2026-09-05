@@ -4,8 +4,10 @@ import Link from "next/link";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ListenButton } from "@/components/ListenButton";
-import { ArticleCard } from "@/components/ArticleCard";
+import { RelatedArticlesCarousel } from "@/components/RelatedArticlesCarousel";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
+import { ensureHtmlContent } from "@/lib/legacy-content";
+import { getCategoryLabel } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +33,14 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
   const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
   const url = `${siteUrl}/articulos/${article.slug}`;
-  const plainText = `${article.title}. ${htmlToPlainText(article.content)}`;
+  const htmlContent = ensureHtmlContent(article.content);
+  const plainText = `${article.title}. ${htmlToPlainText(htmlContent)}`;
 
   const related = await safeQuery(() =>
     prisma.article.findMany({
       where: { published: true, category: article.category, NOT: { slug: article.slug } },
       orderBy: { publishedAt: "desc" },
-      take: 2,
+      take: 8,
     })
   );
 
@@ -50,7 +53,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   return (
     <article className="mx-auto max-w-3xl px-5 py-16">
       <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">
-        {article.category.replace("-", " ")}
+        {getCategoryLabel(article.category)}
         {article.sign ? ` · ${article.sign}` : ""}
       </p>
       <h1 className="mt-3 font-display text-3xl leading-tight text-gold-pale sm:text-4xl">{article.title}</h1>
@@ -81,17 +84,13 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
       <div
         className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90"
-        dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(article.content) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(htmlContent) }}
       />
 
       {related.length > 0 && (
         <div className="mt-16">
           <h2 className="mb-6 font-display text-2xl text-gold-pale">También te puede interesar</h2>
-          <div className="grid gap-6 sm:grid-cols-2">
-            {related.map((a) => (
-              <ArticleCard key={a.slug} article={a} />
-            ))}
-          </div>
+          <RelatedArticlesCarousel articles={related} />
         </div>
       )}
 
