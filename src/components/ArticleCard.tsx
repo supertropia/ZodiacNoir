@@ -1,12 +1,6 @@
 import Link from "next/link";
 import type { Article } from "@prisma/client";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  efemerides: "Efemérides",
-  signos: "Signos",
-  tarot: "Tarot",
-  "psicologia-astrologica": "Psicología astrológica",
-};
+import { getCategoryLabel } from "@/lib/categories";
 
 export function ArticleCard({ article, size = "md" }: { article: Article; size?: "lg" | "md" | "sm" }) {
   const isLg = size === "lg";
@@ -27,7 +21,7 @@ export function ArticleCard({ article, size = "md" }: { article: Article; size?:
       <div className="p-6">
         <div className="mb-3 flex items-center gap-3 font-ui text-xs uppercase tracking-wide text-gold-dim">
           <span className="rounded-full border border-gold/30 px-2.5 py-1 text-gold">
-            {CATEGORY_LABEL[article.category] ?? article.category}
+            {getCategoryLabel(article.category)}
           </span>
           {article.sign && <span>{article.sign}</span>}
           <span>· {article.readingTimeMin} min</span>
