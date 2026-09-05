@@ -8,7 +8,8 @@ export function ProductsCarousel({ products }: { products: ProductCardData[] }) 
     <Carousel
       items={products}
       getKey={(p) => p.id}
-      autoplayMs={3500}
+      autoplay={false}
+      className="h-full"
       renderItem={(product) => <ProductMiniCard product={product} />}
     />
   );
