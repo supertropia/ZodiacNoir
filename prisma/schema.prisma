@@ -117,6 +117,7 @@ model Product {
   published            Boolean    @default(true)
   createdAt            DateTime   @default(now())
   purchases            Purchase[]
+  featuredInArticles   Article[]
 }
 
 model Purchase {
@@ -147,6 +148,8 @@ model Article {
   readingTimeMin Int
   published      Boolean   @default(false)
   publishedAt    DateTime?
+  featuredProduct   Product? @relation(fields: [featuredProductId], references: [id])
+  featuredProductId String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
