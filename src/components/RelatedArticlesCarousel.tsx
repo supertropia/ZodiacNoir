@@ -9,7 +9,9 @@ export function RelatedArticlesCarousel({ articles }: { articles: Article[] }) {
     <Carousel
       items={articles}
       getKey={(a) => a.slug}
-      autoplayMs={2000}
+      autoplay
+      autoplayMs={3500}
+      className="h-full"
       renderItem={(article) => <ArticleCard article={article} />}
     />
   );
