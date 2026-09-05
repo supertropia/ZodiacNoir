@@ -94,7 +94,7 @@ export function RichTextEditor({
 
   return (
     <div>
-      <div className="sticky top-14 z-20 mb-2 flex flex-wrap gap-2 rounded-lg border border-gold/20 bg-noir-bg/95 p-2 shadow-lg shadow-black/40 backdrop-blur">
+      <div className="sticky top-24 z-20 mb-2 flex flex-wrap gap-2 rounded-lg border border-gold/20 bg-noir-bg/95 p-2 shadow-lg shadow-black/40 backdrop-blur">
         <ToolbarButton
           label="Negrita"
           active={editor.isActive("bold")}
