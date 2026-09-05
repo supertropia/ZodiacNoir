@@ -2,20 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Carrusel genérico: una tarjeta visible por vez, se desliza sola cada
-// "autoplayMs" milisegundos, tiene puntitos abajo (clickeables), y también
-// se puede arrastrar/deslizar a mano. Reutilizado tanto para artículos
-// relacionados como para productos de la tienda, para no duplicar la lógica.
+// Carrusel genérico: una tarjeta visible por vez, con flechas a los costados,
+// puntitos abajo (clickeables), se puede arrastrar/deslizar a mano, y
+// opcionalmente se desliza sola cada "autoplayMs" milisegundos. Reutilizado
+// tanto para artículos relacionados como para productos de la tienda, para
+// no duplicar la lógica.
 export function Carousel<T>({
   items,
   getKey,
   renderItem,
   autoplayMs = 3500,
+  autoplay = true,
+  className = "",
 }: {
   items: T[];
   getKey: (item: T) => string;
   renderItem: (item: T) => React.ReactNode;
   autoplayMs?: number;
+  autoplay?: boolean;
+  className?: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -28,14 +33,19 @@ export function Carousel<T>({
     if (slide) track.scrollTo({ left: slide.offsetLeft, behavior: "smooth" });
   };
 
+  const goTo = (index: number) => {
+    const clamped = (index + items.length) % items.length;
+    scrollToIndex(clamped);
+  };
+
   useEffect(() => {
-    if (paused || items.length <= 1) return;
+    if (!autoplay || paused || items.length <= 1) return;
     const id = setInterval(() => {
       const next = (activeIndex + 1) % items.length;
       scrollToIndex(next);
     }, autoplayMs);
     return () => clearInterval(id);
-  }, [activeIndex, paused, items.length, autoplayMs]);
+  }, [activeIndex, paused, items.length, autoplayMs, autoplay]);
 
   const onScroll = () => {
     const track = trackRef.current;
@@ -51,6 +61,7 @@ export function Carousel<T>({
 
   return (
     <div
+      className={`relative flex h-full flex-col ${className}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={() => setPaused(true)}
@@ -58,14 +69,35 @@ export function Carousel<T>({
       <div
         ref={trackRef}
         onScroll={onScroll}
-        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item) => (
-          <div key={getKey(item)} className="w-full shrink-0 snap-start px-1">
+          <div key={getKey(item)} className="h-full w-full shrink-0 snap-start px-1">
             {renderItem(item)}
           </div>
         ))}
       </div>
+
+      {items.length > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Anterior"
+            onClick={() => goTo(activeIndex - 1)}
+            className="focus-ring absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-x-3 -translate-y-1/2 items-center justify-center rounded-full border border-gold/40 bg-noir-bg/80 text-gold opacity-70 backdrop-blur transition hover:opacity-100"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Siguiente"
+            onClick={() => goTo(activeIndex + 1)}
+            className="focus-ring absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 translate-x-3 items-center justify-center rounded-full border border-gold/40 bg-noir-bg/80 text-gold opacity-70 backdrop-blur transition hover:opacity-100"
+          >
+            ›
+          </button>
+        </>
+      )}
 
       {items.length > 1 && (
         <div className="mt-4 flex justify-center gap-2">
