@@ -17,13 +17,15 @@ export function ProductMiniCard({ product }: { product: ProductCardData }) {
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gold/15 bg-noir-surface/40 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:bg-noir-surface hover:shadow-xl hover:shadow-black/30"
     >
       {product.coverImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={product.coverImage}
-          alt=""
-          className="h-36 w-full shrink-0 object-cover"
-          style={{ objectPosition: `center ${product.coverImagePosition}%` }}
-        />
+        <div className="flex h-44 w-full shrink-0 items-center justify-center bg-noir-bg">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={product.coverImage}
+            alt=""
+            className="h-full w-full object-contain"
+            style={{ objectPosition: `center ${product.coverImagePosition}%` }}
+          />
+        </div>
       )}
       <div className="flex flex-1 flex-col p-6">
         <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Material relacionado</p>
