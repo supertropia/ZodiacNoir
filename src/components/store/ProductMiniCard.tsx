@@ -4,6 +4,7 @@ export type ProductCardData = {
   id: string;
   slug: string;
   title: string;
+  description: string;
   priceArs: number | null;
   coverImage: string | null;
   coverImagePosition: number;
@@ -26,9 +27,12 @@ export function ProductMiniCard({ product }: { product: ProductCardData }) {
       )}
       <div className="flex flex-1 flex-col p-6">
         <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Material relacionado</p>
-        <h3 className="mt-2 font-display text-xl leading-snug text-gold-pale group-hover:text-gold [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden">
+        <h3 className="mt-2 font-display text-xl leading-snug text-gold-pale group-hover:text-gold [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] overflow-hidden">
           {product.title}
         </h3>
+        <p className="mt-2 font-body text-sm text-gold-pale/75 [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden">
+          {product.description}
+        </p>
         <div className="mt-auto flex items-center justify-between pt-4">
           <span className="font-ui text-sm text-gold">
             {product.priceArs ? `ARS ${product.priceArs.toLocaleString("es-AR")}` : ""}
