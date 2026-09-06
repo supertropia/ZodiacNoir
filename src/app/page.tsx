@@ -52,6 +52,18 @@ export default async function HomePage() {
               >
                 Ver efemérides
               </Link>
+              <Link
+                href="/tienda"
+                className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Ver tienda
+              </Link>
+              <Link
+                href="/membresia"
+                className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Sumate a la membresía
+              </Link>
             </div>
           </div>
 
