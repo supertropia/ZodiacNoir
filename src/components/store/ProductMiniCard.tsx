@@ -14,10 +14,10 @@ export function ProductMiniCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       href={`/tienda?producto=${product.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gold/15 bg-noir-surface/40 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:bg-noir-surface hover:shadow-xl hover:shadow-black/30"
+      className="group flex h-full flex-row overflow-hidden rounded-2xl border border-gold/15 bg-noir-surface/40 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:bg-noir-surface hover:shadow-xl hover:shadow-black/30 sm:flex-col"
     >
       {product.coverImage && (
-        <div className="flex h-44 w-full shrink-0 items-center justify-center bg-noir-bg">
+        <div className="flex h-full w-24 shrink-0 items-center justify-center bg-noir-bg sm:h-44 sm:w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={product.coverImage}
@@ -27,19 +27,19 @@ export function ProductMiniCard({ product }: { product: ProductCardData }) {
           />
         </div>
       )}
-      <div className="flex flex-1 flex-col p-6">
-        <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Material relacionado</p>
-        <h3 className="mt-2 font-display text-xl leading-snug text-gold-pale group-hover:text-gold [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] overflow-hidden">
+      <div className="flex flex-1 flex-col p-4 sm:p-6">
+        <p className="hidden font-ui text-xs uppercase tracking-wide text-gold-dim sm:block">Material relacionado</p>
+        <h3 className="font-display text-base leading-snug text-gold-pale group-hover:text-gold sm:mt-2 sm:text-xl [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] overflow-hidden">
           {product.title}
         </h3>
-        <p className="mt-2 font-body text-sm text-gold-pale/75 [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden">
+        <p className="mt-2 hidden font-body text-sm text-gold-pale/75 [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden sm:block">
           {product.description}
         </p>
-        <div className="mt-auto flex items-center justify-between pt-4">
+        <div className="mt-auto flex items-center justify-between pt-3 sm:pt-4">
           <span className="font-ui text-sm text-gold">
             {product.priceArs ? `ARS ${product.priceArs.toLocaleString("es-AR")}` : ""}
           </span>
-          <span className="font-body text-sm italic text-gold-dim">Ver en la tienda ↗</span>
+          <span className="hidden font-body text-sm italic text-gold-dim sm:block">Ver en la tienda ↗</span>
         </div>
       </div>
     </Link>
