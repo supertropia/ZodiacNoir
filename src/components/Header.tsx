@@ -23,9 +23,8 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gold/15 bg-noir-bg/85 backdrop-blur supports-[backdrop-filter]:bg-noir-bg/70">
-      <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <MobileNav items={NAV} isAdmin={isAdmin} />
+      <div className="relative mx-auto max-w-6xl px-5">
+        <div className="flex items-center justify-between gap-3 py-3">
           <Link href="/" className="group flex items-center gap-2">
             <svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">
               <circle cx="50" cy="50" r="46" fill="none" stroke="#C9A24B" strokeWidth="1.2" />
@@ -35,36 +34,46 @@ export async function Header() {
               ZODIAC <span className="text-gold">NOIR</span>
             </span>
           </Link>
-        </div>
 
-        <nav className="hidden items-center gap-7 font-ui text-sm uppercase tracking-wide text-gold-pale/90 md:flex">
-          {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="transition hover:text-gold">
-              {item.label}
-            </Link>
-          ))}
-          {isAdmin && (
-            <Link href="/admin" className="text-gold transition hover:text-gold-bright">
-              Panel
-            </Link>
-          )}
-        </nav>
+          <nav className="hidden items-center gap-7 font-ui text-sm uppercase tracking-wide text-gold-pale/90 lg:flex">
+            {NAV.map((item) => (
+              <Link key={item.href} href={item.href} className="transition hover:text-gold">
+                {item.label}
+              </Link>
+            ))}
+            {isAdmin && (
+              <Link href="/admin" className="text-gold transition hover:text-gold-bright">
+                Panel
+              </Link>
+            )}
+          </nav>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:block">
-            <SearchBar />
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:block">
+              <SearchBar />
+            </div>
+            <FontSizeControl />
+            <ThemeToggle />
+            <div className="hidden lg:block">
+              <AccountMenu
+                name={session?.user?.name}
+                email={session?.user?.email}
+                image={session?.user?.image}
+              />
+            </div>
+            <MobileNav
+              items={NAV}
+              isAdmin={isAdmin}
+              name={session?.user?.name}
+              email={session?.user?.email}
+              image={session?.user?.image}
+            />
           </div>
-          <FontSizeControl />
-          <ThemeToggle />
-          <AccountMenu
-            name={session?.user?.name}
-            email={session?.user?.email}
-            image={session?.user?.image}
-          />
         </div>
-      </div>
-      <div className="border-t border-gold/10 px-5 py-2 sm:hidden">
-        <SearchBar />
+
+        <div className="border-t border-gold/10 py-2 sm:hidden">
+          <SearchBar />
+        </div>
       </div>
     </header>
   );
