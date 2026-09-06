@@ -12,7 +12,7 @@ export function RelatedArticlesCarousel({ articles }: { articles: Article[] }) {
       autoplay
       autoplayMs={3500}
       className="h-full"
-      renderItem={(article) => <ArticleCard article={article} />}
+      renderItem={(article) => <ArticleCard article={article} compact />}
     />
   );
 }
