@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Cinzel, Cormorant_Garamond, Jost } from "next/font/google";
 import "./globals.css";
@@ -14,6 +14,15 @@ const cormorant = Cormorant_Garamond({
   style: ["normal", "italic"],
 });
 const jost = Jost({ subsets: ["latin"], variable: "--font-jost", weight: ["400", "500", "600"] });
+
+// Sin esto, los navegadores de celular asumen que el sitio está pensado para
+// escritorio (~980px de ancho) y lo "achican a la fuerza" para que entre en
+// la pantalla, obligando al usuario a pellizcar/zoomear para leer cómodo.
+// Con esto, el celular renderiza la página a su ancho real desde el vamos.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://zodiacnoirweb.com"),
