@@ -129,9 +129,10 @@ export function ProductGrid({
   const [testiIndex, setTestiIndex] = useState(0);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payError, setPayError] = useState("");
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fichaRef = useRef<HTMLDivElement>(null);
   const detalleRef = useRef<HTMLDivElement>(null);
+  const touchStartXRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!initialProductSlug) return;
@@ -199,6 +200,34 @@ export function ProductGrid({
 
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/tienda` : "https://zodiacnoirweb.com/tienda";
+
+  const closeLightbox = () => setLightboxIndex(null);
+
+  const showPrevImage = () => {
+    if (!openProduct) return;
+    setLightboxIndex((i) =>
+      i === null ? null : (i - 1 + openProduct.galleryImages.length) % openProduct.galleryImages.length
+    );
+  };
+
+  const showNextImage = () => {
+    if (!openProduct) return;
+    setLightboxIndex((i) => (i === null ? null : (i + 1) % openProduct.galleryImages.length));
+  };
+
+  // Navegación del lightbox con flechas de teclado y tecla Escape (solo desktop;
+  // el swipe táctil se maneja directo en los eventos touchstart/touchend del modal)
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") showPrevImage();
+      if (e.key === "ArrowRight") showNextImage();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxIndex, openProduct]);
 
   return (
     <div>
@@ -372,6 +401,21 @@ export function ProductGrid({
                         <p className="mt-0.5 font-ui text-[11px] text-gold-dim">
                           Envío y entrega dependen exclusivamente de Amazon según tu ubicación.
                         </p>
+                        <p className="mt-1 flex items-center gap-1 font-ui text-[11px] text-sky-400">
+                          <svg
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="h-3.5 w-3.5 shrink-0"
+                            aria-hidden="true"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Compra segura
+                        </p>
                         <div className="mt-auto space-y-2 pt-3">
                           {openProduct.amazonKindleUrl && (
                             <a target="_blank"
@@ -450,7 +494,7 @@ export function ProductGrid({
                     renderItem={(i) => (
                       <button
                         type="button"
-                        onClick={() => setLightboxImage(openProduct.galleryImages[i])}
+                        onClick={() => setLightboxIndex(i)}
                         className="focus-ring block aspect-[3/4] w-full overflow-hidden rounded-lg border border-gold/15 transition hover:scale-[1.03]"
                         aria-label="Ampliar imagen"
                       >
@@ -545,26 +589,73 @@ export function ProductGrid({
         </div>
       </div>
 
-      {/* Vista ampliada de una captura, sin salir de la ficha del producto */}
-      {lightboxImage && (
+      {/* Vista ampliada de una captura, con navegación por flechas y swipe táctil */}
+      {lightboxIndex !== null && openProduct && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-noir-bg/95 p-4 sm:p-10"
-          onClick={() => setLightboxImage(null)}
+          onClick={closeLightbox}
+          onTouchStart={(e) => {
+            touchStartXRef.current = e.touches[0].clientX;
+          }}
+          onTouchEnd={(e) => {
+            if (touchStartXRef.current === null) return;
+            const diff = e.changedTouches[0].clientX - touchStartXRef.current;
+            // Umbral de 50px para no confundir un toque suelto con un swipe intencional
+            if (Math.abs(diff) > 50) {
+              diff > 0 ? showPrevImage() : showNextImage();
+            }
+            touchStartXRef.current = null;
+          }}
         >
           <button
             type="button"
-            onClick={() => setLightboxImage(null)}
+            onClick={closeLightbox}
             aria-label="Cerrar"
             className="focus-ring absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-gold/40 text-xl text-gold-pale hover:border-gold hover:text-gold sm:right-8 sm:top-8"
           >
             ✕
           </button>
+
+          {openProduct.galleryImages.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                showPrevImage();
+              }}
+              aria-label="Imagen anterior"
+              className="focus-ring absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-gold/40 bg-noir-bg/70 text-xl text-gold-pale hover:border-gold hover:text-gold sm:left-6"
+            >
+              ‹
+            </button>
+          )}
+
           <img
-            src={lightboxImage}
-            alt="Vista ampliada"
+            src={openProduct.galleryImages[lightboxIndex]}
+            alt={`Página interior ${lightboxIndex + 1}`}
             onClick={(e) => e.stopPropagation()}
             className="max-h-full max-w-full rounded-lg object-contain shadow-[0_0_60px_rgba(0,0,0,0.6)]"
           />
+
+          {openProduct.galleryImages.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                showNextImage();
+              }}
+              aria-label="Imagen siguiente"
+              className="focus-ring absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-gold/40 bg-noir-bg/70 text-xl text-gold-pale hover:border-gold hover:text-gold sm:right-6"
+            >
+              ›
+            </button>
+          )}
+
+          {openProduct.galleryImages.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-gold/30 bg-noir-bg/70 px-3 py-1 font-ui text-xs text-gold-pale sm:bottom-8">
+              {lightboxIndex + 1} / {openProduct.galleryImages.length}
+            </div>
+          )}
         </div>
       )}
     </div>
