@@ -27,6 +27,7 @@ export type ProductFormValues = {
   contentHighlights: ContentHighlight[];
   testimonials: Testimonial[];
   audienceText: string;
+  salesCount: number | null;
   fileUrl: string;
   published: boolean;
 };
@@ -37,7 +38,7 @@ const emptyValues: ProductFormValues = {
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
-  audienceText: "", fileUrl: "", published: false,
+  audienceText: "", salesCount: null, fileUrl: "", published: false,
 };
 
 export function ProductForm({ initial }: { initial?: ProductFormValues }) {
@@ -360,9 +361,13 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
 
       <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Lo que dicen quienes ya lo leyeron (testimonios)</p>
+        <p className="font-ui text-xs text-gold-dim">
+          Se muestran como carrusel de tarjetas que se deslizan solas, entre "Para quién es esto" y "Qué vas a recibir".
+          Pegá el comentario tal cual te lo mandó la persona — hay lugar de sobra para textos largos.
+        </p>
 
         {values.testimonials.map((t, i) => (
-          <div key={i} className="space-y-2 rounded-lg border border-gold/15 p-4">
+          <div key={i} className="space-y-3 rounded-lg border border-gold/15 p-4">
             <div className="flex items-center justify-between">
               <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">Testimonio {i + 1}</span>
               <button type="button" onClick={() => removeTestimonial(i)} className={removeBtnClass}>Quitar</button>
@@ -377,12 +382,24 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
               <input type="number" min={0} className={inputClass} placeholder="Compartido X veces"
                 value={t.shared} onChange={(e) => updateTestimonial(i, "shared", Number(e.target.value))} />
             </div>
-            <textarea className={inputClass} rows={2} placeholder="Texto del testimonio"
+            <textarea className={inputClass} rows={10}
+              placeholder="Texto completo del comentario: cómo se conectó con los ejercicios, qué aprendió de astrología, qué tan interesante le resultó todo…"
               value={t.text} onChange={(e) => updateTestimonial(i, "text", e.target.value)} />
           </div>
         ))}
 
         <button type="button" onClick={addTestimonial} className={addBtnClass}>+ Agregar testimonio</button>
+      </div>
+
+      <div className={sectionClass}>
+        <p className="font-display text-sm text-gold-pale">Cantidad de ventas (prueba social)</p>
+        <p className="font-ui text-xs text-gold-dim">
+          Se muestra como un cartel ancho debajo de los botones de compra: "X personas ya lo compraron".
+          Es un número manual, no se calcula solo — dejalo vacío para que ese cartel no aparezca.
+        </p>
+        <input type="number" min={0} className={inputClass} placeholder="Ej. 128"
+          value={values.salesCount ?? ""}
+          onChange={(e) => set("salesCount", e.target.value === "" ? null : Number(e.target.value))} />
       </div>
 
       <div>
