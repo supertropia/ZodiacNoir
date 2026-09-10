@@ -20,6 +20,7 @@ export default async function EditProductPage({ params }: { params: { id: string
     galleryImages: (product.galleryImages ?? []) as string[],
     contentHighlights: (product.contentHighlights ?? []) as { title: string; description: string }[],
     testimonials: (product.testimonials ?? []) as { name: string; stars: number; text: string; shared: number }[],
+    salesCount: product.salesCount ?? null,
   };
 
   return (
