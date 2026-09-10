@@ -9,13 +9,17 @@ function Carousel({
   itemCount,
   renderItem,
   itemClassName = "w-full sm:w-1/2 lg:w-1/3",
+  autoPlayMs,
 }: {
   itemCount: number;
   renderItem: (index: number) => React.ReactNode;
   itemClassName?: string;
+  // Si se pasa, el carrusel avanza solo cada tantos milisegundos (se pausa al pasar el mouse por encima).
+  autoPlayMs?: number;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
   const scrollToIndex = (i: number) => {
     const el = scrollRef.current;
@@ -40,10 +44,29 @@ function Carousel({
     setIndex(closest);
   };
 
+  // Avance automático: sólo si se pidió autoPlayMs, hay más de un elemento,
+  // y el usuario no tiene el mouse encima (así puede quedarse leyendo un comentario sin que se mueva).
+  useEffect(() => {
+    if (!autoPlayMs || itemCount < 2 || isHovered) return;
+    const timer = setInterval(() => {
+      setIndex((current) => {
+        const next = (current + 1) % itemCount;
+        scrollToIndex(next);
+        return next;
+      });
+    }, autoPlayMs);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlayMs, itemCount, isHovered]);
+
   if (itemCount === 0) return null;
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div
         ref={scrollRef}
         onScroll={onScroll}
@@ -112,6 +135,7 @@ export type ProductViewModel = {
   contentHighlights: ContentHighlight[];
   testimonials: Testimonial[];
   audienceText: string | null;
+  salesCount: number | null;
   owned: boolean;
   fileUrl: string | null;
   checkoutUrl: string | null;
@@ -126,7 +150,6 @@ export function ProductGrid({
 }) {
   const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
-  const [testiIndex, setTestiIndex] = useState(0);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payError, setPayError] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -150,15 +173,6 @@ export function ProductGrid({
     () => products.find((p) => p.id === openId) ?? null,
     [products, openId]
   );
-
-  useEffect(() => {
-    setTestiIndex(0);
-    if (!openProduct || openProduct.testimonials.length < 2) return;
-    const timer = setInterval(() => {
-      setTestiIndex((i) => (i + 1) % openProduct.testimonials.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [openProduct]);
 
   const toggleFlip = (id: string) => {
     setFlipped((prev) => {
@@ -447,6 +461,14 @@ export function ProductGrid({
                         Este producto todavía no tiene una forma de pago configurada.
                       </p>
                     )}
+
+                    {typeof openProduct.salesCount === "number" && openProduct.salesCount > 0 && (
+                      <div className="rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-center sm:col-span-2">
+                        <span className="font-ui text-sm uppercase tracking-wide text-gold-bright">
+                          {openProduct.salesCount.toLocaleString("es-AR")} {openProduct.salesCount === 1 ? "persona ya lo compró" : "personas ya lo compraron"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -459,6 +481,44 @@ export function ProductGrid({
                   <p className="font-body text-lg italic leading-relaxed text-gold-pale/85">
                     {openProduct.audienceText}
                   </p>
+                </div>
+              )}
+
+              {openProduct.testimonials.length > 0 && (
+                <div className="mt-8">
+                  <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
+                    Lo que dicen quienes ya lo leyeron
+                  </h4>
+                  <Carousel
+                    itemCount={openProduct.testimonials.length}
+                    itemClassName="w-[85%] sm:w-1/2 lg:w-1/3"
+                    autoPlayMs={5000}
+                    renderItem={(i) => {
+                      const t = openProduct.testimonials[i];
+                      return (
+                        <div className="flex h-full flex-col justify-between rounded-xl border border-gold/15 bg-noir-surface2 p-5 transition hover:-translate-y-0.5 hover:border-gold/40">
+                          <div>
+                            <div className="mb-3 flex gap-0.5" aria-label={`${t.stars} de 5 estrellas`}>
+                              {Array.from({ length: 5 }).map((_, s) => (
+                                <span
+                                  key={s}
+                                  className={s < t.stars ? "text-sky-400" : "text-sky-400/25"}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+                            <p className="font-body text-base italic leading-relaxed text-gold-pale/85">
+                              &ldquo;{t.text}&rdquo;
+                            </p>
+                          </div>
+                          <span className="mt-4 block font-ui text-sm italic text-gold-bright">
+                            {t.name}
+                          </span>
+                        </div>
+                      );
+                    }}
+                  />
                 </div>
               )}
 
@@ -506,49 +566,6 @@ export function ProductGrid({
                       </button>
                     )}
                   />
-                </div>
-              )}
-
-              {openProduct.testimonials.length > 0 && (
-                <div className="mt-8">
-                  <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
-                    Lo que dicen quienes ya lo leyeron
-                  </h4>
-                  <div className="rounded-lg border border-gold/15 p-4">
-                    {openProduct.testimonials[testiIndex] && (
-                      <div key={testiIndex} className="animate-[fadein_.4s_ease]">
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-ui text-sm text-gold-pale">
-                            {openProduct.testimonials[testiIndex].name}
-                          </span>
-                          <span className="text-gold">
-                            {"★".repeat(openProduct.testimonials[testiIndex].stars)}
-                          </span>
-                        </div>
-                        <blockquote className="font-body text-lg italic text-gold-pale/85">
-                          &ldquo;{openProduct.testimonials[testiIndex].text}&rdquo;
-                        </blockquote>
-                        <span className="mt-2 block font-ui text-xs uppercase tracking-wide text-gold-dim">
-                          Compartido {openProduct.testimonials[testiIndex].shared} veces
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  {openProduct.testimonials.length > 1 && (
-                    <div className="mt-3 flex justify-center gap-1.5">
-                      {openProduct.testimonials.map((_, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setTestiIndex(i)}
-                          className={`h-1.5 w-1.5 rounded-full transition ${
-                            i === testiIndex ? "bg-gold" : "bg-gold/30"
-                          }`}
-                          aria-label={`Testimonio ${i + 1}`}
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
