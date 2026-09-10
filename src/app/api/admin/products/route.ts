@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       coverImage, coverImagePosition,
       heroImage, heroImagePosition,
       galleryImages, contentHighlights, testimonials, audienceText,
-      fileUrl, published,
+      salesCount, fileUrl, published,
     } = body;
 
     if (!slug || !title || !description || !priceLabel) {
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
         contentHighlights: Array.isArray(contentHighlights) ? contentHighlights : [],
         testimonials: Array.isArray(testimonials) ? testimonials : [],
         audienceText: audienceText || null,
+        salesCount: Number.isFinite(salesCount) ? salesCount : null,
         fileUrl: fileUrl || null,
         published: Boolean(published),
       },
