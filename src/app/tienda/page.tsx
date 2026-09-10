@@ -54,6 +54,7 @@ export default async function TiendaPage({
         contentHighlights: (product.contentHighlights ?? []) as { title: string; description: string }[],
         testimonials: (product.testimonials ?? []) as { name: string; stars: number; text: string; shared: number }[],
         audienceText: product.audienceText,
+        salesCount: product.salesCount,
         owned,
         fileUrl: owned ? product.fileUrl : null,
         checkoutUrl,
