@@ -290,7 +290,7 @@ export function ArticleForm({
           value={values.featuredProductId}
           onChange={(e) => set("featuredProductId", e.target.value)}
         >
-          <option value="" className="bg-noir-surface">— Ninguno —</option>
+          <option value="" className="bg-noir-surface">— Ninguno (se muestran todos los productos) —</option>
           {products.map((p) => (
             <option key={p.id} value={p.id} className="bg-noir-surface">
               {p.title}
@@ -300,37 +300,29 @@ export function ArticleForm({
       </div>
 
       <div>
-        <label className={labelClass}>Contenido</label>
-        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} />
+        <label className={labelClass} htmlFor="content">Contenido</label>
+        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} onImageUpload={uploadImage} />
       </div>
 
-      <label className="flex items-center gap-2 font-ui text-sm text-gold-pale">
-        <input
-          type="checkbox"
-          checked={values.published}
-          onChange={(e) => set("published", e.target.checked)}
-          className="h-4 w-4 rounded border-gold/40 accent-gold"
-        />
-        Publicado
-      </label>
-
-      <div className="flex flex-wrap gap-3 pt-2">
+      <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
         <button
-          type="submit"
+          type="button"
           disabled={saving}
-          className="focus-ring rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+          onClick={(e) => onSubmit(e, false)}
+          className="focus-ring rounded-full border border-gold/40 px-6 py-3 font-ui text-sm uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
         >
-          {saving ? "Guardando…" : "Guardar"}
+          Guardar borrador
         </button>
-        {!values.published && (
-          <button
-            type="button"
-            disabled={saving}
-            onClick={(e) => onSubmit(e, true)}
-            className="focus-ring rounded-full border border-gold/40 px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-gold hover:bg-gold/10 disabled:opacity-60"
-          >
-            Guardar y publicar
-          </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={(e) => onSubmit(e, true)}
+          className="focus-ring rounded-full bg-gold px-6 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-50"
+        >
+          {saving ? "Guardando…" : "Publicar"}
+        </button>
+        {values.published && (
+          <span className="font-ui text-xs uppercase tracking-wide text-green-400">Este artículo está publicado</span>
         )}
       </div>
     </form>
