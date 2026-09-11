@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   try {
     const body = await req.json();
-    const { slug, title, excerpt, content, coverImage, category, sign, published, featuredProductId } = body;
+    const { slug, title, excerpt, content, coverImage, coverImagePosX, coverImagePosY, category, sign, published, featuredProductId } = body;
 
     if (!slug || !title || !excerpt || !content || !category) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
@@ -43,6 +43,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         excerpt,
         content: cleanContent,
         coverImage: coverImage || null,
+        coverImagePosX: Number.isFinite(coverImagePosX) ? coverImagePosX : 50,
+        coverImagePosY: Number.isFinite(coverImagePosY) ? coverImagePosY : 50,
         category,
         sign: sign || null,
         authorName: "Zodiac Noir",
