@@ -30,6 +30,7 @@ export function ArticleCard({
               ? `h-full w-24 sm:h-36 sm:w-full ${isLg ? "sm:h-56" : ""}`
               : `w-full ${isLg ? "h-56" : "h-36"}`
           }`}
+          style={{ objectPosition: `${article.coverImagePosX ?? 50}% ${article.coverImagePosY ?? 50}%` }}
         />
       )}
       <div className={`flex flex-1 flex-col ${compact ? "p-4 sm:p-6" : "p-6"}`}>
