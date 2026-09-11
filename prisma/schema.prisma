@@ -144,6 +144,8 @@ model Article {
   excerpt        String
   content        String    @db.Text
   coverImage     String?
+  coverImagePosX Int       @default(50)
+  coverImagePosY Int       @default(50)
   category       String
   sign           String?
   authorName     String
