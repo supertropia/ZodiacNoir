@@ -13,6 +13,8 @@ export type ArticleFormValues = {
   excerpt: string;
   content: string;
   coverImage: string;
+  coverImagePosX: number;
+  coverImagePosY: number;
   category: string;
   sign: string;
   published: boolean;
@@ -40,6 +42,8 @@ export function ArticleForm({
       excerpt: "",
       content: "",
       coverImage: "",
+      coverImagePosX: 50,
+      coverImagePosY: 50,
       category: "efemerides",
       sign: "",
       published: false,
@@ -223,8 +227,56 @@ export function ArticleForm({
           <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={onCoverFileChange} />
         </div>
         {values.coverImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={values.coverImage} alt="" className="mt-3 h-32 w-full rounded-lg border border-gold/20 object-cover" />
+          <div className="mt-4 space-y-3 rounded-lg border border-gold/20 bg-noir-surface2/40 p-4">
+            <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">
+              Vista previa de la tarjeta (así se va a ver recortada)
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={values.coverImage}
+              alt=""
+              className="h-40 w-full rounded-lg border border-gold/20 object-cover sm:h-48"
+              style={{ objectPosition: `${values.coverImagePosX}% ${values.coverImagePosY}%` }}
+            />
+            <div>
+              <label className="mb-1 flex justify-between font-ui text-xs text-gold-dim">
+                <span>Ajuste horizontal</span>
+                <span>{values.coverImagePosX}%</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={values.coverImagePosX}
+                onChange={(e) => set("coverImagePosX", Number(e.target.value))}
+                className="w-full accent-gold"
+              />
+            </div>
+            <div>
+              <label className="mb-1 flex justify-between font-ui text-xs text-gold-dim">
+                <span>Ajuste vertical</span>
+                <span>{values.coverImagePosY}%</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={values.coverImagePosY}
+                onChange={(e) => set("coverImagePosY", Number(e.target.value))}
+                className="w-full accent-gold"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                set("coverImagePosX", 50);
+                set("coverImagePosY", 50);
+              }}
+              className="font-ui text-xs uppercase tracking-wide text-gold-dim underline hover:text-gold"
+            >
+              Volver al centro
+            </button>
+          </div>
         )}
       </div>
 
@@ -238,7 +290,7 @@ export function ArticleForm({
           value={values.featuredProductId}
           onChange={(e) => set("featuredProductId", e.target.value)}
         >
-          <option value="" className="bg-noir-surface">— Ninguno (se muestran todos los productos) —</option>
+          <option value="" className="bg-noir-surface">— Ninguno —</option>
           {products.map((p) => (
             <option key={p.id} value={p.id} className="bg-noir-surface">
               {p.title}
@@ -248,29 +300,37 @@ export function ArticleForm({
       </div>
 
       <div>
-        <label className={labelClass} htmlFor="content">Contenido</label>
-        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} onImageUpload={uploadImage} />
+        <label className={labelClass}>Contenido</label>
+        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
+      <label className="flex items-center gap-2 font-ui text-sm text-gold-pale">
+        <input
+          type="checkbox"
+          checked={values.published}
+          onChange={(e) => set("published", e.target.checked)}
+          className="h-4 w-4 rounded border-gold/40 accent-gold"
+        />
+        Publicado
+      </label>
+
+      <div className="flex flex-wrap gap-3 pt-2">
         <button
-          type="button"
+          type="submit"
           disabled={saving}
-          onClick={(e) => onSubmit(e, false)}
-          className="focus-ring rounded-full border border-gold/40 px-6 py-3 font-ui text-sm uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
+          className="focus-ring rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
         >
-          Guardar borrador
+          {saving ? "Guardando…" : "Guardar"}
         </button>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={(e) => onSubmit(e, true)}
-          className="focus-ring rounded-full bg-gold px-6 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-50"
-        >
-          {saving ? "Guardando…" : "Publicar"}
-        </button>
-        {values.published && (
-          <span className="font-ui text-xs uppercase tracking-wide text-green-400">Este artículo está publicado</span>
+        {!values.published && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={(e) => onSubmit(e, true)}
+            className="focus-ring rounded-full border border-gold/40 px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-gold hover:bg-gold/10 disabled:opacity-60"
+          >
+            Guardar y publicar
+          </button>
         )}
       </div>
     </form>
