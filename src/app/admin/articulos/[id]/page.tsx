@@ -26,6 +26,8 @@ export default async function EditArticlePage({ params }: { params: { id: string
           excerpt: article.excerpt,
           content: ensureHtmlContent(article.content),
           coverImage: article.coverImage ?? "",
+          coverImagePosX: article.coverImagePosX,
+          coverImagePosY: article.coverImagePosY,
           category: article.category,
           sign: article.sign ?? "",
           published: article.published,
