@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { slug, title, excerpt, content, coverImage, category, sign, published } = body;
+    const { slug, title, excerpt, content, coverImage, coverImagePosX, coverImagePosY, category, sign, published } = body;
 
     if (!slug || !title || !excerpt || !content || !category) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
@@ -38,6 +39,8 @@ export async function POST(req: Request) {
         excerpt,
         content: cleanContent,
         coverImage: coverImage || null,
+        coverImagePosX: Number.isFinite(coverImagePosX) ? coverImagePosX : 50,
+        coverImagePosY: Number.isFinite(coverImagePosY) ? coverImagePosY : 50,
         category,
         sign: sign || null,
         authorName: "Zodiac Noir",
