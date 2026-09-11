@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type ContentHighlight = { title: string; description: string };
@@ -469,6 +470,18 @@ export function ProductGrid({
                         </span>
                       </div>
                     )}
+
+                    <div className="rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-center sm:col-span-2">
+                      <p className="font-ui text-sm uppercase tracking-wide text-gold-bright">
+                        ¿Ya adquiriste nuestros libros? ¡Envianos tu reseña!
+                      </p>
+                      <Link
+                        href="/contacto"
+                        className="focus-ring mt-2 inline-block rounded-full border border-gold/40 px-4 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10"
+                      >
+                        Enviar reseña por correo
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
