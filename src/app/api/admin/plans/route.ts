@@ -16,10 +16,16 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { slug, name, description, priceLabel, interval, lemonVariantId, featured, benefits } = body;
+    const { slug, name, description, priceLabel, interval, lemonVariantId, priceArs, featured, benefits } = body;
 
-    if (!slug || !name || !description || !priceLabel || !interval || !lemonVariantId) {
+    if (!slug || !name || !description || !priceLabel || !interval) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    }
+    if (!lemonVariantId && !Number.isFinite(priceArs)) {
+      return NextResponse.json(
+        { error: "Configurá al menos un medio de pago: Precio en ARS o Variant ID de Lemon Squeezy." },
+        { status: 400 }
+      );
     }
 
     const existing = await prisma.membershipPlan.findUnique({ where: { slug } });
@@ -28,7 +34,13 @@ export async function POST(req: Request) {
     }
 
     const plan = await prisma.membershipPlan.create({
-      data: { slug, name, description, priceLabel, interval, lemonVariantId, featured: Boolean(featured), benefits: benefits || "" },
+      data: {
+        slug, name, description, priceLabel, interval,
+        lemonVariantId: lemonVariantId || null,
+        priceArs: Number.isFinite(priceArs) ? priceArs : null,
+        featured: Boolean(featured),
+        benefits: benefits || "",
+      },
     });
 
     return NextResponse.json({ plan }, { status: 201 });
