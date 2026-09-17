@@ -74,7 +74,7 @@ export default async function MembresiaPage() {
                   <MembershipCheckoutButton planId={plan.id} isLoggedIn={Boolean(email)} />
                 ) : null}
 
-                {lemonUrl && (
+               <a {lemonUrl && (
                   
                     href={lemonUrl}
                     className="focus-ring inline-block w-full rounded-full border border-gold/40 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:bg-gold/10"
