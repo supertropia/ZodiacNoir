@@ -12,6 +12,7 @@ export type PlanFormValues = {
   priceLabel: string;
   interval: string;
   lemonVariantId: string;
+  priceArs: number | null;
   featured: boolean;
   benefits: string; // separado por "|"
 };
@@ -22,7 +23,7 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
   const [values, setValues] = useState<PlanFormValues>(
     initial ?? {
       slug: "", name: "", description: "", priceLabel: "", interval: "mes",
-      lemonVariantId: "", featured: false, benefits: "",
+      lemonVariantId: "", priceArs: null, featured: false, benefits: "",
     }
   );
   const [benefitsText, setBenefitsText] = useState(
@@ -42,8 +43,14 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError("");
+
+    if (!values.priceArs && !values.lemonVariantId) {
+      setError("Configurá al menos un medio de pago: Precio en ARS (Mercado Pago) o Variant ID (Lemon Squeezy).");
+      return;
+    }
+
+    setSaving(true);
     try {
       const payload = {
         ...values,
@@ -105,7 +112,7 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
         <div>
           <label className={labelClass} htmlFor="priceLabel">Precio a mostrar</label>
           <input id="priceLabel" required className={inputClass} value={values.priceLabel}
-            onChange={(e) => set("priceLabel", e.target.value)} placeholder="Ej. USD 7/mes" />
+            onChange={(e) => set("priceLabel", e.target.value)} placeholder="Ej. ARS 2.500/mes" />
         </div>
         <div>
           <label className={labelClass} htmlFor="interval">Intervalo</label>
@@ -117,13 +124,25 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
         </div>
       </div>
 
-      <div>
-        <label className={labelClass} htmlFor="lemonVariantId">
-          Variant ID de Lemon Squeezy
-        </label>
-        <input id="lemonVariantId" required className={inputClass} value={values.lemonVariantId}
-          onChange={(e) => set("lemonVariantId", e.target.value)}
-          placeholder="Lo copiás desde tu producto en Lemon Squeezy" />
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label className={labelClass} htmlFor="priceArs">Precio en ARS (Mercado Pago)</label>
+          <input id="priceArs" type="number" min={0} className={inputClass}
+            value={values.priceArs ?? ""}
+            onChange={(e) => set("priceArs", e.target.value === "" ? null : Number(e.target.value))}
+            placeholder="Ej. 2500" />
+          <p className="mt-1.5 font-ui text-xs text-gold-dim">
+            Dejalo vacío si este plan solo se vende por Lemon Squeezy.
+          </p>
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="lemonVariantId">
+            Variant ID de Lemon Squeezy
+          </label>
+          <input id="lemonVariantId" className={inputClass} value={values.lemonVariantId}
+            onChange={(e) => set("lemonVariantId", e.target.value)}
+            placeholder="Opcional — lo copiás desde tu producto en Lemon Squeezy" />
+        </div>
       </div>
 
       <div>
@@ -135,7 +154,6 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
           onChange={(e) => setBenefitsText(e.target.value)}
           placeholder={"Artículos exclusivos\nEfemérides ampliadas\n10% off en la tienda"} />
       </div>
-     
 
       <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
         <input type="checkbox" checked={values.featured}
