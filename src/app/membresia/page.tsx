@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasActiveMembership } from "@/lib/membership";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
+import { MembershipCheckoutButton } from "@/components/membership/MembershipCheckoutButton";
 
 export const metadata = {
   title: "Membresía",
@@ -35,15 +36,13 @@ export default async function MembresiaPage() {
 
       {plans.length === 0 && (
         <div className="mt-10 rounded-xl border border-gold/20 bg-noir-surface/50 p-6 font-ui text-sm text-gold-dim">
-          Todavía no cargaste ningún plan. Creá tus productos de membresía en Lemon Squeezy y
-          agregalos a la tabla <code>MembershipPlan</code> (vía Prisma Studio, por ejemplo) con
-          el <code>lemonVariantId</code> de cada variante.
+          Todavía no cargaste ningún plan. Creá tu primer plan desde <code>/admin/planes</code>.
         </div>
       )}
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2">
         {plans.map((plan) => {
-          const checkoutUrl = buildCheckoutUrl(plan.lemonVariantId, {
+          const lemonUrl = buildCheckoutUrl(plan.lemonVariantId, {
             email: email ?? undefined,
             redirectPath: "/membresia?bienvenido=1",
           });
@@ -69,18 +68,27 @@ export default async function MembresiaPage() {
                   </li>
                 ))}
               </ul>
-              {checkoutUrl ? (
-                
-                 <a href={checkoutUrl}
-                  className="focus-ring mt-6 inline-block w-full rounded-full bg-gold px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
-                >
-                  Sumarme
-                </a>
-              ) : (
-                <p className="mt-6 font-ui text-xs text-gold-dim">
-                  Falta configurar la variable de entorno LEMONSQUEEZY_STORE.
-                </p>
-              )}
+
+              <div className="mt-6 space-y-3">
+                {plan.priceArs ? (
+                  <MembershipCheckoutButton planId={plan.id} isLoggedIn={Boolean(email)} />
+                ) : null}
+
+                {lemonUrl && (
+                  
+                    href={lemonUrl}
+                    className="focus-ring inline-block w-full rounded-full border border-gold/40 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:bg-gold/10"
+                  >
+                    Pagar con Lemon Squeezy
+                  </a>
+                )}
+
+                {!plan.priceArs && !lemonUrl && (
+                  <p className="font-ui text-xs text-gold-dim">
+                    Este plan todavía no tiene un medio de pago configurado.
+                  </p>
+                )}
+              </div>
             </div>
           );
         })}
