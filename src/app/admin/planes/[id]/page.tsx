@@ -9,7 +9,7 @@ export default async function EditPlanPage({ params }: { params: { id: string } 
   return (
     <div>
       <h1 className="mb-8 font-display text-3xl text-gold-pale">Editar plan</h1>
-      <PlanForm initial={plan} />
+      <PlanForm initial={{ ...plan, lemonVariantId: plan.lemonVariantId ?? "" }} />
     </div>
   );
 }
