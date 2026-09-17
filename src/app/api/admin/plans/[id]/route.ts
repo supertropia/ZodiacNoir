@@ -17,10 +17,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   try {
     const body = await req.json();
-    const { slug, name, description, priceLabel, interval, lemonVariantId, featured, benefits } = body;
+    const { slug, name, description, priceLabel, interval, lemonVariantId, priceArs, featured, benefits } = body;
 
-    if (!slug || !name || !description || !priceLabel || !interval || !lemonVariantId) {
+    if (!slug || !name || !description || !priceLabel || !interval) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    }
+    if (!lemonVariantId && !Number.isFinite(priceArs)) {
+      return NextResponse.json(
+        { error: "Configurá al menos un medio de pago: Precio en ARS o Variant ID de Lemon Squeezy." },
+        { status: 400 }
+      );
     }
 
     const current = await prisma.membershipPlan.findUnique({ where: { id: params.id } });
@@ -33,7 +39,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const plan = await prisma.membershipPlan.update({
       where: { id: params.id },
-      data: { slug, name, description, priceLabel, interval, lemonVariantId, featured: Boolean(featured), benefits: benefits || "" },
+      data: {
+        slug, name, description, priceLabel, interval,
+        lemonVariantId: lemonVariantId || null,
+        priceArs: Number.isFinite(priceArs) ? priceArs : null,
+        featured: Boolean(featured),
+        benefits: benefits || "",
+      },
     });
 
     return NextResponse.json({ plan });
