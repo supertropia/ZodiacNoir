@@ -74,20 +74,20 @@ export default async function MembresiaPage() {
                   <MembershipCheckoutButton planId={plan.id} isLoggedIn={Boolean(email)} />
                 ) : null}
 
-               <a {lemonUrl && (
+                {lemonUrl ? (
                   
                     href={lemonUrl}
                     className="focus-ring inline-block w-full rounded-full border border-gold/40 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:bg-gold/10"
                   >
                     Pagar con Lemon Squeezy
                   </a>
-                )}
+                ) : null}
 
-                {!plan.priceArs && !lemonUrl && (
+                {!plan.priceArs && !lemonUrl ? (
                   <p className="font-ui text-xs text-gold-dim">
                     Este plan todavía no tiene un medio de pago configurado.
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
           );
