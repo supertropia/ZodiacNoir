@@ -55,6 +55,15 @@ export function MobileNav({
                 Panel
               </Link>
             )}
+            {email && (
+              <Link
+                href="/mi-cuenta"
+                onClick={() => setOpen(false)}
+                className="py-3 text-gold transition hover:text-gold-bright"
+              >
+                Mi cuenta
+              </Link>
+            )}
 
             <div className="flex items-center justify-between py-3">
               {email ? (
