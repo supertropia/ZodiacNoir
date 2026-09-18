@@ -32,6 +32,7 @@ export default async function EditArticlePage({ params }: { params: { id: string
           sign: article.sign ?? "",
           published: article.published,
           featuredProductId: article.featuredProductId ?? "",
+          isPremium: article.isPremium,
         }}
       />
     </div>
