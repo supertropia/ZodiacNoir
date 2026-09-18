@@ -19,6 +19,7 @@ export type ArticleFormValues = {
   sign: string;
   published: boolean;
   featuredProductId: string;
+  isPremium: boolean;
 };
 
 const SIGNS = [
@@ -48,6 +49,7 @@ export function ArticleForm({
       sign: "",
       published: false,
       featuredProductId: "",
+      isPremium: false,
     }
   );
   const [slugTouched, setSlugTouched] = useState(isEditing);
@@ -172,6 +174,9 @@ export function ArticleForm({
           value={values.excerpt}
           onChange={(e) => set("excerpt", e.target.value)}
         />
+        <p className="mt-1.5 font-ui text-xs text-gold-dim">
+          Si marcás el artículo como "solo para miembros", esto es lo único que va a ver quien no sea miembro.
+        </p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -303,6 +308,21 @@ export function ArticleForm({
         <label className={labelClass} htmlFor="content">Contenido</label>
         <RichTextEditor value={values.content} onChange={(html) => set("content", html)} onImageUpload={uploadImage} />
       </div>
+
+      <label className="flex items-start gap-3 rounded-lg border border-gold/20 bg-noir-surface2/30 p-4 font-ui text-sm text-gold-pale/85">
+        <input
+          type="checkbox"
+          checked={values.isPremium}
+          onChange={(e) => set("isPremium", e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-gold"
+        />
+        <span>
+          <span className="block font-medium text-gold-pale">Artículo solo para miembros</span>
+          <span className="block text-xs text-gold-dim">
+            Quien no sea miembro va a ver únicamente el copete, con un cartel invitándolo a sumarse.
+          </span>
+        </span>
+      </label>
 
       <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
         <button
