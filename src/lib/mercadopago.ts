@@ -186,3 +186,24 @@ export async function getPreapproval(preapprovalId: string): Promise<MercadoPago
 
   return res.json();
 }
+
+/**
+ * Cancela una suscripción activa en Mercado Pago (la pasa a status "cancelled").
+ * Se usa desde /mi-cuenta cuando la persona pide dar de baja su membresía.
+ */
+export async function cancelPreapproval(preapprovalId: string): Promise<void> {
+  const res = await fetch(`${MP_API_BASE}/preapproval/${preapprovalId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Error cancelando suscripción de Mercado Pago:", res.status, errorText);
+    throw new Error("No se pudo cancelar la suscripción en Mercado Pago.");
+  }
+}
