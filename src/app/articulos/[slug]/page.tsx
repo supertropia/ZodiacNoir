@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma, safeQuery } from "@/lib/prisma";
+import { hasActiveMembership } from "@/lib/membership";
 import { ShareButtons } from "@/components/ShareButtons";
 import { ListenButton } from "@/components/ListenButton";
 import { RelatedArticlesCarousel } from "@/components/RelatedArticlesCarousel";
 import { ProductsCarousel } from "@/components/store/ProductsCarousel";
+import { ArticlePaywall } from "@/components/ArticlePaywall";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 import { ensureHtmlContent } from "@/lib/legacy-content";
 import { getCategoryLabel } from "@/lib/categories";
@@ -34,10 +38,19 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   );
   if (!article || !article.published) notFound();
 
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  const isMember = await hasActiveMembership(email);
+  const isLocked = article.isPremium && !isMember;
+
   const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
   const url = `${siteUrl}/articulos/${article.slug}`;
   const htmlContent = ensureHtmlContent(article.content);
-  const plainText = `${article.title}. ${htmlToPlainText(htmlContent)}`;
+  // Si el artículo está bloqueado, el texto para "Escuchar" tampoco puede filtrar el
+  // contenido completo — usamos solo el copete, igual que la vista en pantalla.
+  const plainText = isLocked
+    ? `${article.title}. ${article.excerpt}`
+    : `${article.title}. ${htmlToPlainText(htmlContent)}`;
 
   const related = await safeQuery(() =>
     prisma.article.findMany({
@@ -47,8 +60,6 @@ export default async function ArticlePage({ params }: { params: { slug: string }
     })
   );
 
-  // Si el artículo tiene un producto destacado asignado a mano, mostramos solo ese.
-  // Si no, mostramos todos los productos de la tienda como respaldo.
   const featuredProducts = article.featuredProduct
     ? [article.featuredProduct]
     : await safeQuery(() =>
@@ -103,10 +114,19 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         <ShareButtons url={url} title={article.title} />
       </div>
 
-      <div
-        className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90"
-        dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(htmlContent) }}
-      />
+      {isLocked ? (
+        <>
+          <p className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90">
+            {article.excerpt}
+          </p>
+          <ArticlePaywall isLoggedIn={Boolean(email)} />
+        </>
+      ) : (
+        <div
+          className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90"
+          dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(htmlContent) }}
+        />
+      )}
 
       {(related.length > 0 || featuredProducts.length > 0) && (
         <div className="mt-16 grid items-stretch gap-x-14 gap-y-10 sm:grid-cols-2">
