@@ -34,6 +34,12 @@ export function AccountMenu({ name, email, image }: AccountMenuProps) {
       <span className="hidden max-w-[120px] truncate font-ui text-xs text-gold-pale sm:inline">
         {name ?? email}
       </span>
+      <Link
+        href="/mi-cuenta"
+        className="focus-ring rounded-full border border-gold/40 px-3 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10 sm:px-4 sm:py-2"
+      >
+        Mi cuenta
+      </Link>
       <button
         onClick={() => signOut({ callbackUrl: "/" })}
         className="focus-ring rounded-full border border-gold/40 px-3 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10 sm:px-4 sm:py-2"
