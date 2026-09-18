@@ -159,6 +159,8 @@ model Article {
   readingTimeMin Int
   published      Boolean   @default(false)
   publishedAt    DateTime?
+  // Si es true, solo lo pueden leer completo los miembros con membresía activa.
+  isPremium      Boolean   @default(false)
   featuredProduct   Product? @relation(fields: [featuredProductId], references: [id])
   featuredProductId String?
   createdAt      DateTime  @default(now())
