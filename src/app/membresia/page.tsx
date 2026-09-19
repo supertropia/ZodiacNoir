@@ -7,7 +7,7 @@ import { MembershipCheckoutButton } from "@/components/membership/MembershipChec
 
 export const metadata = {
   title: "Membresía",
-  description: "Sumate a Zodiac Noir Plus: artículos exclusivos, efemérides ampliadas y PDFs incluidos.",
+  description: "Sumate a Zodiac Noir Plus: artículos exclusivos y acceso a los tránsitos de la semana.",
   alternates: { canonical: "/membresia" },
 };
 
@@ -24,8 +24,8 @@ export default async function MembresiaPage() {
       <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Membresía</p>
       <h1 className="mt-2 font-display text-4xl text-gold-pale">Zodiac Noir Plus</h1>
       <p className="mt-4 max-w-2xl font-body text-lg text-gold-pale/85">
-        Contenido exclusivo, efemérides ampliadas con tránsitos personalizados y descuentos en
-        todos los PDFs de la tienda. Cancelás cuando quieras.
+        Lectura completa de los artículos premium y acceso exclusivo a los tránsitos de la semana.
+        Cancelás cuando quieras.
       </p>
 
       {isMember && (
