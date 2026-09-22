@@ -1,16 +1,168 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
-import { useEffect, useRef } from "react";
+import Link from "@tiptap/extension-link";
+import { useEffect, useRef, useState } from "react";
 import { repairPastedPlainText } from "@/lib/legacy-content";
 
+type LinkSearchResult = { type: "articulo" | "producto"; title: string; href: string };
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Panel de "+ Enlace interno": busca artículos/productos existentes por título
+// (vía /api/admin/link-search) e inserta el enlace correcto sin que la
+// editora tenga que recordar ni tipear ninguna URL. También permite pegar una
+// URL externa a mano y quitar un enlace ya aplicado.
+function LinkPanel({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<LinkSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
+  const hasSelection = !editor.state.selection.empty;
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    setLoading(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/link-search?q=${encodeURIComponent(query.trim())}`);
+        const data = await res.json();
+        setResults(data.results || []);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  const applyResult = (result: LinkSearchResult) => {
+    if (hasSelection) {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: result.href }).run();
+    } else {
+      editor
+        .chain()
+        .focus()
+        .insertContent(`<a href="${result.href}">${escapeHtml(result.title)}</a>&nbsp;`)
+        .run();
+    }
+    onClose();
+  };
+
+  const applyManualUrl = () => {
+    const href = manualUrl.trim();
+    if (!href) return;
+    if (!hasSelection) {
+      window.alert("Para pegar una URL externa, primero seleccioná el texto que va a quedar enlazado.");
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+    onClose();
+  };
+
+  const removeLink = () => {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    onClose();
+  };
+
+  return (
+    <div className="absolute left-0 top-full z-30 mt-2 w-full max-w-md rounded-lg border border-gold/30 bg-noir-bg p-4 shadow-xl shadow-black/50 sm:w-96">
+      <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Enlazar a un artículo o producto</p>
+      <input
+        autoFocus
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Escribí parte del título…"
+        className="mt-2 w-full rounded-lg border border-gold/25 bg-transparent px-3 py-2 font-ui text-sm text-gold-pale placeholder:text-gold-dim/60 focus:border-gold focus:outline-none"
+      />
+      {!hasSelection && query.trim().length >= 2 && (
+        <p className="mt-1.5 font-ui text-xs text-gold-dim">
+          No tenías texto seleccionado: se va a insertar el título como enlace en el punto donde estaba el cursor.
+        </p>
+      )}
+      <div className="mt-2 max-h-56 overflow-y-auto">
+        {loading && <p className="px-1 py-2 font-ui text-xs text-gold-dim">Buscando…</p>}
+        {!loading && query.trim().length >= 2 && results.length === 0 && (
+          <p className="px-1 py-2 font-ui text-xs text-gold-dim">Sin resultados.</p>
+        )}
+        {results.map((r) => (
+          <button
+            key={`${r.type}-${r.href}`}
+            type="button"
+            onClick={() => applyResult(r)}
+            className="focus-ring flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left font-ui text-sm text-gold-pale hover:bg-gold/10"
+          >
+            <span className="truncate">{r.title}</span>
+            <span className="shrink-0 rounded-full border border-gold/30 px-2 py-0.5 text-[10px] uppercase tracking-wide text-gold-dim">
+              {r.type === "articulo" ? "Artículo" : "Producto"}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 border-t border-gold/15 pt-3">
+        <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">O pegar una URL externa</p>
+        <div className="mt-1.5 flex gap-2">
+          <input
+            type="text"
+            value={manualUrl}
+            onChange={(e) => setManualUrl(e.target.value)}
+            placeholder="https://…"
+            className="w-full rounded-lg border border-gold/25 bg-transparent px-3 py-2 font-ui text-sm text-gold-pale placeholder:text-gold-dim/60 focus:border-gold focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={applyManualUrl}
+            className="focus-ring shrink-0 rounded-lg border border-gold/40 px-3 py-2 font-ui text-xs uppercase tracking-wide text-gold hover:bg-gold/10"
+          >
+            Aplicar
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between border-t border-gold/15 pt-3">
+        {editor.isActive("link") ? (
+          <button
+            type="button"
+            onClick={removeLink}
+            className="font-ui text-xs uppercase tracking-wide text-wine-bright hover:underline"
+          >
+            Quitar enlace
+          </button>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="font-ui text-xs uppercase tracking-wide text-gold-dim hover:text-gold"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Editor visual del contenido del artículo.
-// Soporta: párrafos, **negrita real** (<strong>), subtítulos H2 y cita
-// destacada (pull quote). Todo lo demás de StarterKit se desactiva a
-// propósito para no ofrecer opciones que no forman parte del diseño
-// editorial del sitio (listas, tachado, código, etc. quedan afuera por ahora).
+// Soporta: párrafos, **negrita real** (<strong>), subtítulos H2, cita
+// destacada (pull quote) y enlaces (internos vía buscador, o externos a
+// mano). Todo lo demás de StarterKit se desactiva a propósito para no
+// ofrecer opciones que no forman parte del diseño editorial del sitio
+// (listas, tachado, código, etc. quedan afuera por ahora).
 
 function ToolbarButton({
   active,
@@ -51,6 +203,7 @@ export function RichTextEditor({
   onImageUpload: (file: File) => Promise<string | null>;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [linkPanelOpen, setLinkPanelOpen] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -68,6 +221,11 @@ export function RichTextEditor({
       Image.configure({
         HTMLAttributes: { class: "article-image" },
         allowBase64: false,
+      }),
+      Link.configure({
+        openOnClick: false,
+        autolink: false,
+        HTMLAttributes: { target: "_blank", rel: "noopener noreferrer" },
       }),
     ],
     content: value || "<p></p>",
@@ -145,6 +303,17 @@ export function RichTextEditor({
           }}
         />
         <span className="mx-1 w-px self-stretch bg-gold/20" aria-hidden="true" />
+        <div className="relative">
+          <ToolbarButton
+            label="Enlace interno"
+            active={editor.isActive("link")}
+            onClick={() => setLinkPanelOpen((v) => !v)}
+          >
+            + Enlace interno
+          </ToolbarButton>
+          {linkPanelOpen && <LinkPanel editor={editor} onClose={() => setLinkPanelOpen(false)} />}
+        </div>
+        <span className="mx-1 w-px self-stretch bg-gold/20" aria-hidden="true" />
         <ToolbarButton
           label="Reparar texto pegado"
           onClick={() => {
@@ -165,7 +334,9 @@ export function RichTextEditor({
         Seleccioná texto y usá los botones de arriba. "+ Subtítulo" convierte la línea completa en un
         encabezado H2; "+ Cita destacada" la convierte en una cita resaltada. Para volver a texto normal,
         parate en esa línea y usá "Párrafo normal". Para borrar una imagen ya insertada, hacé click sobre
-        ella y apretá Suprimir/Delete.
+        ella y apretá Suprimir/Delete. "+ Enlace interno" busca artículos y productos por título y arma el
+        enlace correcto solo: seleccioná primero el texto que querés que quede enlazado (o dejá el cursor
+        donde quieras insertarlo si no hay nada seleccionado).
       </p>
     </div>
   );
