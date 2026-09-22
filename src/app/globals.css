@@ -89,12 +89,14 @@ html[data-theme="day"] .bg-velvet {
 }
 
 .prose-zodiac h2 {
-  margin-top: 1.6em;
+margin-top: 1.6em;
   margin-bottom: 0.7em;
   font-family: var(--font-cinzel), serif;
   font-size: 1.5em;
   line-height: 1.3;
   color: #EADFC0;
+  /* Para que el header fijo no tape el subtítulo al saltar desde el índice */
+  scroll-margin-top: 6.5rem;
 }
 
 .prose-zodiac blockquote.pull-quote {
