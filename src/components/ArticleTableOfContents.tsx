@@ -20,7 +20,7 @@ export function ArticleTableOfContents({ headings, locked }: { headings: TocHead
       <ol className="mt-3 space-y-2">
         {headings.map((heading, i) => (
           <li key={heading.id}>
-            
+            <a
               href={locked ? "#paywall-cta" : `#${heading.id}`}
               className="group flex items-baseline gap-2.5 font-ui text-sm text-gold-pale/85 transition hover:text-gold"
             >
