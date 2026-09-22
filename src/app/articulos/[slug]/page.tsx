@@ -10,8 +10,10 @@ import { ListenButton } from "@/components/ListenButton";
 import { RelatedArticlesCarousel } from "@/components/RelatedArticlesCarousel";
 import { ProductsCarousel } from "@/components/store/ProductsCarousel";
 import { ArticlePaywall } from "@/components/ArticlePaywall";
+import { ArticleTableOfContents } from "@/components/ArticleTableOfContents";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 import { ensureHtmlContent } from "@/lib/legacy-content";
+import { buildTableOfContents } from "@/lib/toc";
 import { getCategoryLabel } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
@@ -46,11 +48,16 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
   const url = `${siteUrl}/articulos/${article.slug}`;
   const htmlContent = ensureHtmlContent(article.content);
+  const sanitizedHtml = sanitizeArticleHtml(htmlContent);
+  // Le agregamos un id a cada subtítulo (H2) para poder armar el índice y
+  // saltar directo a cada sección. Se calcula acá, no se guarda en la base
+  // de datos, así que siempre refleja el contenido actual del artículo.
+  const { headings, html: renderHtml } = buildTableOfContents(sanitizedHtml);
   // Si el artículo está bloqueado, el texto para "Escuchar" tampoco puede filtrar el
   // contenido completo — usamos solo el copete, igual que la vista en pantalla.
   const plainText = isLocked
     ? `${article.title}. ${article.excerpt}`
-    : `${article.title}. ${htmlToPlainText(htmlContent)}`;
+    : `${article.title}. ${htmlToPlainText(sanitizedHtml)}`;
 
   const related = await safeQuery(() =>
     prisma.article.findMany({
@@ -114,17 +121,21 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         <ShareButtons url={url} title={article.title} />
       </div>
 
+      <ArticleTableOfContents headings={headings} locked={isLocked} />
+
       {isLocked ? (
         <>
           <p className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90">
             {article.excerpt}
           </p>
-          <ArticlePaywall isLoggedIn={Boolean(email)} />
+          <div id="paywall-cta">
+            <ArticlePaywall isLoggedIn={Boolean(email)} />
+          </div>
         </>
       ) : (
         <div
           className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90"
-          dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(htmlContent) }}
+          dangerouslySetInnerHTML={{ __html: renderHtml }}
         />
       )}
 
