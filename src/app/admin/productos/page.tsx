@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { CopyProductLinkButton } from "@/components/admin/CopyProductLinkButton";
+import { TogglePublishProductButton } from "@/components/admin/TogglePublishProductButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function AdminProductsPage() {
                 className="focus-ring rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10">
                 Editar
               </Link>
+              <TogglePublishProductButton id={p.id} title={p.title} published={p.published} />
               <DeleteProductButton id={p.id} title={p.title} />
             </div>
           </div>
