@@ -67,7 +67,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
     })
   );
 
-  const featuredProducts = article.featuredProduct
+  const featuredProducts = article.featuredProduct && article.featuredProduct.published
     ? [article.featuredProduct]
     : await safeQuery(() =>
         prisma.product.findMany({
