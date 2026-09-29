@@ -117,6 +117,22 @@ function Carousel({
   );
 }
 
+// Muestra el precio de Amazon con "USD" pequeño y tenue al lado del monto.
+// Acepta cualquier formato guardado ("9,99", "$9.99", "USD 14,99") y lo normaliza.
+// Si el texto tiene otra moneda (por ejemplo €), se muestra tal cual, sin agregar USD.
+function AmazonPrice({ value }: { value: string }) {
+  const raw = value.trim();
+  if (/€|eur/i.test(raw)) return <span>{raw}</span>;
+  const amount = raw.replace(/us\$|usd/gi, "").replace(/\s+/g, "").trim();
+  const withSymbol = amount.startsWith("$") ? amount : `$${amount}`;
+  return (
+    <span className="whitespace-nowrap">
+      {withSymbol}
+      <span className="ml-1 text-[10px] font-normal tracking-wider opacity-70">USD</span>
+    </span>
+  );
+}
+
 export type ProductViewModel = {
   id: string;
   slug: string;
@@ -433,14 +449,19 @@ export function ProductGrid({
                         </p>
                         <div className="mt-auto space-y-2 pt-3">
                           {openProduct.amazonKindleUrl && (
-                            <a target="_blank"
-                              rel="noreferrer"
-                              href={openProduct.amazonKindleUrl}
-                              className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-                            >
-                              <span>Kindle (digital)</span>
-                              {openProduct.amazonKindlePrice && <span>{openProduct.amazonKindlePrice}</span>}
-                            </a>
+                            <div>
+                              <a target="_blank"
+                                rel="noreferrer"
+                                href={openProduct.amazonKindleUrl}
+                                className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
+                              >
+                                <span>Kindle (digital)</span>
+                                {openProduct.amazonKindlePrice && <AmazonPrice value={openProduct.amazonKindlePrice} />}
+                              </a>
+                              <p className="mt-1.5 text-center font-ui text-[11px] tracking-wide text-gold-dim">
+                                Disponible en <span className="text-gold">Kindle Unlimited</span>
+                              </p>
+                            </div>
                           )}
                           {openProduct.amazonPaperbackUrl && (
                             <a target="_blank"
@@ -449,7 +470,7 @@ export function ProductGrid({
                               className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
                             >
                               <span>Libro físico</span>
-                              {openProduct.amazonPaperbackPrice && <span>{openProduct.amazonPaperbackPrice}</span>}
+                              {openProduct.amazonPaperbackPrice && <AmazonPrice value={openProduct.amazonPaperbackPrice} />}
                             </a>
                           )}
                         </div>
