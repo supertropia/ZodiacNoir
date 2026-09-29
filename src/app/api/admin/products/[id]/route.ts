@@ -69,6 +69,32 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
+// Cambia solo el estado publicado/borrador, sin tocar el resto de los campos del producto.
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await requireAdminSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
+  try {
+    const body = await req.json();
+    if (typeof body.published !== "boolean") {
+      return NextResponse.json({ error: "Valor de publicación inválido." }, { status: 400 });
+    }
+
+    const current = await prisma.product.findUnique({ where: { id: params.id } });
+    if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+    const product = await prisma.product.update({
+      where: { id: params.id },
+      data: { published: body.published },
+    });
+
+    return NextResponse.json({ product });
+  } catch (error) {
+    console.error("Error cambiando estado de publicación:", error);
+    return NextResponse.json({ error: "No se pudo cambiar el estado del producto." }, { status: 500 });
+  }
+}
+
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await requireAdminSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
