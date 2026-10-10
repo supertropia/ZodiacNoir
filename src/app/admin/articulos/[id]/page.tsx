@@ -31,6 +31,7 @@ export default async function EditArticlePage({ params }: { params: { id: string
           category: article.category,
           sign: article.sign ?? "",
           published: article.published,
+          publishedAt: article.publishedAt ? article.publishedAt.toISOString() : "",
           featuredProductId: article.featuredProductId ?? "",
           isPremium: article.isPremium,
         }}
