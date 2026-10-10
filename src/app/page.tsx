@@ -4,6 +4,7 @@ import { ArticleCard } from "@/components/ArticleCard";
 import { NextEventWidget } from "@/components/NextEventWidget";
 import { NewsletterForm } from "@/components/NewsletterForm";
 import { prisma, safeQuery } from "@/lib/prisma";
+import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const articles = await safeQuery(() =>
     prisma.article.findMany({
-      where: { published: true },
+      where: livePublicationFilter(),
       orderBy: { publishedAt: "desc" },
       take: 7,
     })
