@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArticleCard } from "@/components/ArticleCard";
 import { prisma, safeQuery } from "@/lib/prisma";
+import { livePublicationFilter } from "@/lib/publication";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default async function ArticlesPage() {
   const articles = await safeQuery(() =>
     prisma.article.findMany({
-      where: { published: true },
+      where: livePublicationFilter(),
       orderBy: { publishedAt: "desc" },
     })
   );
