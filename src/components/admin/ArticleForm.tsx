@@ -20,12 +20,44 @@ export type ArticleFormValues = {
   published: boolean;
   featuredProductId: string;
   isPremium: boolean;
+  // Fecha y hora de publicación. Llega como texto ISO desde el servidor y, dentro del
+  // formulario, se maneja como valor de <input type="datetime-local"> (hora del dispositivo).
+  publishedAt?: string;
 };
 
 const SIGNS = [
   "", "Aries", "Tauro", "Géminis", "Cáncer", "Leo", "Virgo",
   "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis",
 ];
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** Texto ISO (UTC) → valor para <input type="datetime-local"> en la hora del dispositivo. */
+function toLocalInput(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** Valor de <input type="datetime-local"> → Date, o null si está vacío o es inválido. */
+function parseLocalInput(value?: string): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatLocal(d: Date): string {
+  return d.toLocaleString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
 
 export function ArticleForm({
   initial,
@@ -37,7 +69,7 @@ export function ArticleForm({
   const router = useRouter();
   const isEditing = Boolean(initial?.id);
   const [values, setValues] = useState<ArticleFormValues>(
-    initial ?? {
+    initial ? { ...initial, publishedAt: toLocalInput(initial.publishedAt) } : {
       slug: "",
       title: "",
       excerpt: "",
@@ -50,6 +82,7 @@ export function ArticleForm({
       published: false,
       featuredProductId: "",
       isPremium: false,
+      publishedAt: "",
     }
   );
   const [slugTouched, setSlugTouched] = useState(isEditing);
@@ -57,6 +90,12 @@ export function ArticleForm({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const publishDate = parseLocalInput(values.publishedAt);
+  const isFuture = publishDate !== null && publishDate.getTime() > Date.now();
+  // Estado ya guardado del artículo (no el que se está editando): para el aviso junto a los botones.
+  const savedDate = initial?.publishedAt ? new Date(initial.publishedAt) : null;
+  const savedScheduled = Boolean(initial?.published && savedDate && savedDate.getTime() > Date.now());
 
   const set = <K extends keyof ArticleFormValues>(key: K, value: ArticleFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -106,7 +145,13 @@ export function ArticleForm({
     setSaving(true);
     setError("");
     try {
-      const payload = { ...values, published: publishOverride ?? values.published };
+      const finalPublished = publishOverride ?? values.published;
+      const payload = {
+        ...values,
+        published: finalPublished,
+        // El borrador no guarda fecha; al publicar o programar se envía en formato ISO (UTC).
+        publishedAt: finalPublished && publishDate ? publishDate.toISOString() : null,
+      };
       const url = isEditing ? `/api/admin/articles/${initial!.id}` : "/api/admin/articles";
       const method = isEditing ? "PUT" : "POST";
       const res = await fetch(url, {
@@ -324,6 +369,41 @@ export function ArticleForm({
         </span>
       </label>
 
+      <div className="rounded-lg border border-gold/20 bg-noir-surface2/30 p-4">
+        <label className={labelClass} htmlFor="publishedAt">
+          Fecha y hora de publicación (opcional)
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            id="publishedAt"
+            type="datetime-local"
+            className={`${inputClass} sm:max-w-xs dark:[color-scheme:dark]`}
+            value={values.publishedAt ?? ""}
+            onChange={(e) => set("publishedAt", e.target.value)}
+          />
+          {values.publishedAt && (
+            <button
+              type="button"
+              onClick={() => set("publishedAt", "")}
+              className="font-ui text-xs uppercase tracking-wide text-gold-dim underline hover:text-gold"
+            >
+              Quitar fecha
+            </button>
+          )}
+        </div>
+        <p className="mt-2 font-ui text-xs text-gold-dim">
+          {!publishDate &&
+            "Sin fecha, el artículo se publica de inmediato al pulsar «Publicar». Con una fecha futura queda oculto y se publica solo a esa hora."}
+          {publishDate && isFuture &&
+            `Se publicará automáticamente el ${formatLocal(publishDate)} (hora de este dispositivo).`}
+          {publishDate && !isFuture &&
+            "Esa fecha ya pasó: al publicar, el artículo se verá de inmediato con esa fecha."}
+        </p>
+        <p className="mt-1 font-ui text-xs text-gold-dim">
+          «Guardar borrador» no conserva la fecha: solo se aplica al publicar o programar.
+        </p>
+      </div>
+
       <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
         <button
           type="button"
@@ -339,9 +419,14 @@ export function ArticleForm({
           onClick={(e) => onSubmit(e, true)}
           className="focus-ring rounded-full bg-gold px-6 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-50"
         >
-          {saving ? "Guardando…" : "Publicar"}
+          {saving ? "Guardando…" : isFuture ? "Programar publicación" : "Publicar"}
         </button>
-        {values.published && (
+        {initial?.published && savedScheduled && savedDate && (
+          <span className="font-ui text-xs uppercase tracking-wide text-gold">
+            Programado para el {formatLocal(savedDate)}
+          </span>
+        )}
+        {initial?.published && !savedScheduled && (
           <span className="font-ui text-xs uppercase tracking-wide text-green-400">Este artículo está publicado</span>
         )}
       </div>
