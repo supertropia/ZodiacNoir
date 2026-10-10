@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { estimateReadingMinutes } from "@/lib/slugify";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
+import { parsePublishDate, resolvePublishedAt } from "@/lib/publication";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -20,11 +21,16 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       slug, title, excerpt, content, coverImage, coverImagePosX, coverImagePosY,
-      category, sign, published, featuredProductId, isPremium,
+      category, sign, published, publishedAt, featuredProductId, isPremium,
     } = body;
 
     if (!slug || !title || !excerpt || !content || !category) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    }
+
+    const { date: requestedDate, error: dateError } = parsePublishDate(publishedAt);
+    if (dateError) {
+      return NextResponse.json({ error: dateError }, { status: 400 });
     }
 
     const existing = await prisma.article.findUnique({ where: { slug } });
@@ -49,7 +55,7 @@ export async function POST(req: Request) {
         authorRole: "Equipo editorial",
         readingTimeMin: estimateReadingMinutes(htmlToPlainText(cleanContent)),
         published: Boolean(published),
-        publishedAt: published ? new Date() : null,
+        publishedAt: resolvePublishedAt({ published: Boolean(published), requested: requestedDate }),
         featuredProductId: featuredProductId || null,
         isPremium: Boolean(isPremium),
       },
