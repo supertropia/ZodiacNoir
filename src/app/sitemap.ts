@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const articles = await prisma.article.findMany({
-    where: { published: true },
+    where: livePublicationFilter(),
     select: { slug: true, updatedAt: true },
     orderBy: { publishedAt: "desc" },
   });
