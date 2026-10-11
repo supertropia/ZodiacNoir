@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { signs, getSign } from "@/data/signs";
 import { prisma, safeQuery } from "@/lib/prisma";
+import { livePublicationFilter } from "@/lib/publication";
 import { ArticleCard } from "@/components/ArticleCard";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function SignPage({ params }: { params: { sign: string } })
 
   const related = await safeQuery(() =>
     prisma.article.findMany({
-      where: { published: true, sign: sign.name },
+      where: { ...livePublicationFilter(), sign: sign.name },
       orderBy: { publishedAt: "desc" },
     })
   );
