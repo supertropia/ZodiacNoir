@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SocialLinks } from "./SocialLinks";
 
 export function Footer() {
   return (
@@ -27,11 +28,7 @@ export function Footer() {
 
         <div className="font-ui text-sm text-gold-pale/90">
           <p className="mb-3 uppercase tracking-wide text-gold-dim">Seguinos</p>
-          <ul className="space-y-2">
-            <li><a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold">Instagram</a></li>
-            <li><a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold">X (Twitter)</a></li>
-            <li><a href="https://pinterest.com" target="_blank" rel="noopener noreferrer" className="hover:text-gold">Pinterest</a></li>
-          </ul>
+          <SocialLinks variant="footer" />
         </div>
       </div>
       <div className="gold-line" />
