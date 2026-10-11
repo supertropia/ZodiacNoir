@@ -3,6 +3,7 @@ import { ConstellationEye } from "@/components/ConstellationEye";
 import { ArticleCard } from "@/components/ArticleCard";
 import { NextEventWidget } from "@/components/NextEventWidget";
 import { NewsletterForm } from "@/components/NewsletterForm";
+import { SocialLinks } from "@/components/SocialLinks";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
@@ -100,6 +101,19 @@ export default async function HomePage() {
           {rest.map((a) => (
             <ArticleCard key={a.slug} article={a} />
           ))}
+        </div>
+      </section>
+
+      {/* Redes y canales: franja discreta, pensada para no competir con el contenido */}
+      <section className="mx-auto max-w-6xl px-5 pb-6 pt-14" aria-labelledby="home-redes">
+        <div className="flex flex-col items-center gap-4 border-y border-gold/15 py-8 text-center">
+          <div>
+            <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Más Zodiac Noir</p>
+            <h2 id="home-redes" className="mt-1.5 font-body text-lg text-gold-pale/85">
+              Seguí la conversación en video, audio y redes.
+            </h2>
+          </div>
+          <SocialLinks variant="strip" />
         </div>
       </section>
 
