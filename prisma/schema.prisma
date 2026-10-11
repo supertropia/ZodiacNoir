@@ -165,4 +165,19 @@ model Article {
   featuredProductId String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  views          ArticleView[]
+}
+
+// Vistas de cada artículo, un número por artículo y por día (sin datos personales).
+// Se suma desde /api/views y se lee en el panel de administración.
+model ArticleView {
+  id        String  @id @default(cuid())
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+  // Día en horario de Argentina, formato AAAA-MM-DD
+  day       String
+  views     Int     @default(0)
+
+  @@unique([articleId, day])
+  @@index([day])
 }
