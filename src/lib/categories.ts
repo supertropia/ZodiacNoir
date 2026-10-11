@@ -5,6 +5,7 @@
 // Agregar una categoría nueva acá alcanza para que aparezca en todo el sitio.
 export const CATEGORIES = [
   { value: "efemerides", label: "Efemérides" },
+  { value: "lunaciones", label: "Lunaciones" },
   { value: "signos", label: "Signos" },
   { value: "tarot", label: "Tarot" },
   { value: "psicologia-astrologica", label: "Psicología astrológica" },
