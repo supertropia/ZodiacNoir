@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { hasActiveMembership } from "@/lib/membership";
 import { ShareButtons } from "@/components/ShareButtons";
+import { ViewTracker } from "@/components/ViewTracker";
 import { ListenButton } from "@/components/ListenButton";
 import { RelatedArticlesCarousel } from "@/components/RelatedArticlesCarousel";
 import { ProductsCarousel } from "@/components/store/ProductsCarousel";
@@ -87,6 +88,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
   return (
     <article className="mx-auto max-w-3xl px-5 py-16">
+      <ViewTracker slug={article.slug} />
       <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">
         {getCategoryLabel(article.category)}
         {article.sign ? ` · ${article.sign}` : ""}
