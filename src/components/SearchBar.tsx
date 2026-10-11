@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { getCategoryLabel } from "@/lib/categories";
+
+// Compara sin tildes ni mayúsculas: "efemerides" encuentra "Efemérides".
+const normalize = (text: string) =>
+  text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 type SearchItem = {
   slug: string;
@@ -18,7 +23,7 @@ export function SearchBar() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/articles")
+    fetch("/api/search")
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) setItems(data.articles ?? []);
@@ -32,15 +37,15 @@ export function SearchBar() {
   }, []);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalize(query.trim());
     if (!q) return [];
     return items
       .filter(
         (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.excerpt.toLowerCase().includes(q) ||
-          a.category.toLowerCase().includes(q) ||
-          (a.sign ?? "").toLowerCase().includes(q)
+          normalize(a.title).includes(q) ||
+          normalize(a.excerpt).includes(q) ||
+          normalize(getCategoryLabel(a.category)).includes(q) ||
+          normalize(a.sign ?? "").includes(q)
       )
       .slice(0, 6);
   }, [query, items]);
@@ -62,7 +67,7 @@ export function SearchBar() {
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="Buscar temas, signos, tarot…"
           aria-label="Buscar en Zodiac Noir"
-          className="w-40 bg-transparent font-ui text-sm text-gold-pale placeholder:text-gold-dim focus:outline-none sm:w-56"
+          className="w-40 bg-transparent font-ui text-sm text-gold-pale placeholder:text-gold-dim focus:outline-none sm:w-56 xl:w-40 2xl:w-56"
         />
       </div>
 
@@ -74,7 +79,9 @@ export function SearchBar() {
                 href={`/articulos/${a.slug}`}
                 className="block px-4 py-3 font-ui text-sm text-gold-pale transition hover:bg-gold/10"
               >
-                <span className="block font-display text-xs uppercase tracking-wide text-gold">{a.category}</span>
+                <span className="block font-display text-xs uppercase tracking-wide text-gold">
+                  {getCategoryLabel(a.category)}
+                </span>
                 {a.title}
               </Link>
             </li>
