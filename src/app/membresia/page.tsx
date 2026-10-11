@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasActiveMembership } from "@/lib/membership";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
+import { formatPlanPrice } from "@/lib/plan-price";
 import { MembershipCheckoutButton } from "@/components/membership/MembershipCheckoutButton";
 
 export const metadata = {
@@ -61,7 +62,7 @@ export default async function MembresiaPage() {
                 <p className="mb-2 font-ui text-xs uppercase tracking-wide text-gold">Recomendado</p>
               )}
               <h2 className="font-display text-2xl text-gold-pale">{plan.name}</h2>
-              <p className="mt-1 font-ui text-2xl text-gold">{plan.priceLabel}</p>
+              <p className="mt-1 font-ui text-2xl text-gold">{formatPlanPrice(plan)}</p>
               <p className="mt-3 font-body text-base text-gold-pale/80">{plan.description}</p>
               <ul className="mt-5 space-y-2 font-ui text-sm text-gold-pale/85">
                 {benefits.map((b) => (
