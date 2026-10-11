@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SocialLinks } from "@/components/SocialLinks";
 
 export const metadata: Metadata = {
   title: "Sobre nosotros",
@@ -69,23 +70,14 @@ export default function AboutPage() {
         </ul>
       </div>
 
-      <div className="mt-10 flex flex-wrap items-center gap-4">
-       
-         <a  href="https://www.instagram.com/zodiac_noir_astrologia_y_tarot/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="focus-ring rounded-full border border-gold/40 px-5 py-2.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
-        >
-          Instagram
-        </a>
-        
-         <a href="https://x.com/zodiacnoir"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="focus-ring rounded-full border border-gold/40 px-5 py-2.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
-        >
-          X
-        </a>
+      <div className="mt-10">
+        <h2 className="font-display text-xl text-gold-pale">Podés encontrarme en mis redes</h2>
+        <p className="mt-2 font-body text-base text-gold-pale/75">
+          Videos en YouTube, el podcast en Spotify y el día a día en Instagram.
+        </p>
+        <div className="mt-5">
+          <SocialLinks variant="full" />
+        </div>
       </div>
     </section>
   );
