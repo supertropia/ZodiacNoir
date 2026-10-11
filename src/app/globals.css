@@ -120,3 +120,33 @@ margin-top: 1.6em;
   border-radius: 0.75rem;
   border: 1px solid rgba(201, 162, 75, 0.2);
 }
+
+/* Enlaces dentro del artículo: siempre visibles (color propio + subrayado), no solo al pasar el cursor.
+   Se usa un azul suave y no el dorado para que no se confundan con las negritas, que ya son doradas. */
+.prose-zodiac a {
+  color: #8FB8E8;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: color 0.2s ease, text-decoration-thickness 0.2s ease;
+}
+
+.prose-zodiac a:hover {
+  color: #BBD6F5;
+  text-decoration-thickness: 2px;
+}
+
+.prose-zodiac a:focus-visible {
+  outline: 2px solid #C9A24B;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* En el tema claro el azul pastel casi no se lee sobre crema: se usa uno más profundo */
+html[data-theme="day"] .prose-zodiac a {
+  color: #2C5AA0;
+}
+
+html[data-theme="day"] .prose-zodiac a:hover {
+  color: #1B3F78;
+}
