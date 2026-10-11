@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { DeleteArticleButton } from "@/components/admin/DeleteArticleButton";
 import { formatPublicationDateTime, getPublicationStatus } from "@/lib/publication";
+import { getViewStats, type ArticleViewStats } from "@/lib/views";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,17 @@ const STATUS_STYLES = {
   published: { label: "Publicado", className: "bg-green-800/40 text-green-300" },
 } as const;
 
-function ArticleRow({ article, now }: { article: ArticleRowData; now: Date }) {
+const NUMBER_FORMAT = new Intl.NumberFormat("es-AR");
+
+function ArticleRow({
+  article,
+  now,
+  stats,
+}: {
+  article: ArticleRowData;
+  now: Date;
+  stats?: ArticleViewStats;
+}) {
   const status = getPublicationStatus(article, now);
   const style = STATUS_STYLES[status];
 
@@ -39,6 +50,14 @@ function ArticleRow({ article, now }: { article: ArticleRowData; now: Date }) {
           <p className="mt-1 font-ui text-xs text-gold-dim">
             {status === "scheduled" ? "Se publica: " : "Publicado: "}
             {formatPublicationDateTime(article.publishedAt)}
+          </p>
+        )}
+        {status === "published" && (
+          <p className="mt-1 font-ui text-xs text-gold-pale/80">
+            <span className="text-gold">{NUMBER_FORMAT.format(stats?.total ?? 0)}</span>{" "}
+            {(stats?.total ?? 0) === 1 ? "vista" : "vistas"} en total ·{" "}
+            <span className="text-gold">{NUMBER_FORMAT.format(stats?.last7 ?? 0)}</span> en los últimos 7 días ·{" "}
+            <span className="text-gold">{NUMBER_FORMAT.format(stats?.last30 ?? 0)}</span> en los últimos 30
           </p>
         )}
       </div>
@@ -60,6 +79,13 @@ export default async function AdminDashboard() {
   const articles = await prisma.article.findMany({
     orderBy: { updatedAt: "desc" },
   });
+  const viewStats = await getViewStats(now);
+
+  // Los 5 artículos más leídos de los últimos 30 días (solo los que ya tuvieron vistas).
+  const topArticles = articles
+    .filter((a) => (viewStats.get(a.id)?.last30 ?? 0) > 0)
+    .sort((a, b) => (viewStats.get(b.id)?.last30 ?? 0) - (viewStats.get(a.id)?.last30 ?? 0))
+    .slice(0, 5);
 
   // Programados: los que todavía no llegaron a su fecha, del más próximo al más lejano.
   const scheduled = articles
@@ -79,6 +105,25 @@ export default async function AdminDashboard() {
           <h2 className="mt-1 font-display text-xl text-gold-pale">Productos (PDFs) →</h2>
         </Link>
       </div>
+
+      {topArticles.length > 0 && (
+        <section className="mb-8 rounded-xl border border-gold/15 bg-noir-surface/40 p-5">
+          <h2 className="font-display text-lg text-gold-pale">Más leídos · últimos 30 días</h2>
+          <ol className="mt-3 space-y-1.5">
+            {topArticles.map((a, i) => (
+              <li key={a.id} className="flex items-baseline justify-between gap-4 font-ui text-sm">
+                <span className="truncate text-gold-pale/90">
+                  <span className="mr-2 text-gold-dim">{i + 1}.</span>
+                  {a.title}
+                </span>
+                <span className="shrink-0 text-gold">
+                  {NUMBER_FORMAT.format(viewStats.get(a.id)?.last30 ?? 0)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-3xl text-gold-pale">Artículos</h1>
@@ -103,7 +148,7 @@ export default async function AdminDashboard() {
           </p>
           <div className="space-y-3">
             {scheduled.map((a) => (
-              <ArticleRow key={a.id} article={a} now={now} />
+              <ArticleRow key={a.id} article={a} now={now} stats={viewStats.get(a.id)} />
             ))}
           </div>
         </section>
@@ -115,7 +160,7 @@ export default async function AdminDashboard() {
 
       <div className="space-y-3">
         {rest.map((a) => (
-          <ArticleRow key={a.id} article={a} now={now} />
+          <ArticleRow key={a.id} article={a} now={now} stats={viewStats.get(a.id)} />
         ))}
       </div>
     </div>
