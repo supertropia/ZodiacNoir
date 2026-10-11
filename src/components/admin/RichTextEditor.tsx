@@ -204,6 +204,36 @@ export function RichTextEditor({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
+  const [pastingImage, setPastingImage] = useState(false);
+
+  // Referencias que siempre apuntan a lo más reciente: el editor se crea una sola vez,
+  // pero la función de subida y el propio editor tienen que estar vigentes cuando se pega.
+  const uploadRef = useRef(onImageUpload);
+  uploadRef.current = onImageUpload;
+  const editorRef = useRef<Editor | null>(null);
+
+  // Sube las imágenes pegadas o arrastradas y las inserta en el artículo.
+  // `pos` es el lugar donde se soltó la imagen (null = donde está el cursor).
+  const insertImageFiles = async (files: File[], pos: number | null) => {
+    setPastingImage(true);
+    try {
+      let at = pos;
+      for (const file of files) {
+        const url = await uploadRef.current(file);
+        const ed = editorRef.current;
+        if (!url || !ed) continue;
+        if (at !== null) {
+          ed.chain().focus().insertContentAt(at, { type: "image", attrs: { src: url, alt: "" } }).run();
+          at = null; // las siguientes van a continuación, donde quedó el cursor
+        } else {
+          ed.chain().focus().setImage({ src: url, alt: "" }).run();
+        }
+      }
+    } finally {
+      setPastingImage(false);
+    }
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -235,11 +265,34 @@ export function RichTextEditor({
         class:
           "prose-zodiac min-h-[320px] w-full rounded-lg border border-gold/25 bg-transparent px-4 py-3 font-body text-base leading-relaxed text-gold-pale focus:border-gold focus:outline-none",
       },
+      // Ctrl+V con una captura de pantalla: se sube sola y queda dentro del artículo.
+      // Si lo que se copió trae texto (por ejemplo celdas de Excel o párrafos de Word),
+      // se deja el pegado normal para no perder ese texto.
+      handlePaste: (_view, event) => {
+        const clipboard = event.clipboardData;
+        if (!clipboard) return false;
+        const images = Array.from(clipboard.files).filter((f) => f.type.startsWith("image/"));
+        if (images.length === 0) return false;
+        if (clipboard.getData("text/plain").trim()) return false;
+        event.preventDefault();
+        void insertImageFiles(images, null);
+        return true;
+      },
+      // Arrastrar una imagen desde el escritorio o una carpeta directo al texto.
+      handleDrop: (view, event) => {
+        const images = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        if (images.length === 0) return false;
+        event.preventDefault();
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? null;
+        void insertImageFiles(images, pos);
+        return true;
+      },
     },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
   });
+  editorRef.current = editor;
 
   useEffect(() => {
     if (editor && value && editor.getHTML() !== value) {
@@ -330,7 +383,14 @@ export function RichTextEditor({
         </ToolbarButton>
       </div>
       <EditorContent editor={editor} />
+      {pastingImage && (
+        <p role="status" className="mt-1.5 font-ui text-xs text-gold">
+          Subiendo imagen… aparecerá en el texto en unos segundos.
+        </p>
+      )}
       <p className="mt-1.5 font-ui text-xs text-gold-dim">
+        Para agregar una imagen o una tabla en captura: copiá la captura y pegala con Ctrl+V (Cmd+V en Mac)
+        directamente en el texto, o arrastrá el archivo hasta acá. Se sube sola.
         Seleccioná texto y usá los botones de arriba. "+ Subtítulo" convierte la línea completa en un
         encabezado H2; "+ Cita destacada" la convierte en una cita resaltada. Para volver a texto normal,
         parate en esa línea y usá "Párrafo normal". Para borrar una imagen ya insertada, hacé click sobre
