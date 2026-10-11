@@ -120,7 +120,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-gold/15 pb-6">
         <p className="font-ui text-sm text-gold-dim">Comparte este artículo</p>
-        <ShareButtons url={url} title={article.title} />
+        <ShareButtons url={url} title={article.title} image={article.coverImage} />
       </div>
 
       <ArticleTableOfContents headings={headings} locked={isLocked} />
