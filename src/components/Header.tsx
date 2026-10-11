@@ -35,17 +35,12 @@ export async function Header() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-7 font-ui text-sm uppercase tracking-wide text-gold-pale/90 lg:flex">
+          <nav className="hidden items-center gap-5 font-ui text-[13px] uppercase tracking-wide text-gold-pale/90 xl:flex 2xl:gap-7 2xl:text-sm">
             {NAV.map((item) => (
               <Link key={item.href} href={item.href} className="transition hover:text-gold">
                 {item.label}
               </Link>
             ))}
-            {isAdmin && (
-              <Link href="/admin" className="text-gold transition hover:text-gold-bright">
-                Panel
-              </Link>
-            )}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -54,11 +49,12 @@ export async function Header() {
             </div>
             <FontSizeControl />
             <ThemeToggle />
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               <AccountMenu
                 name={session?.user?.name}
                 email={session?.user?.email}
                 image={session?.user?.image}
+                isAdmin={isAdmin}
               />
             </div>
             <MobileNav
