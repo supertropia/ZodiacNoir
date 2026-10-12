@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ArticleForm } from "@/components/admin/ArticleForm";
 import { ensureHtmlContent } from "@/lib/legacy-content";
+import { parseFaq } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,12 @@ export default async function EditArticlePage({ params }: { params: { id: string
           publishedAt: article.publishedAt ? article.publishedAt.toISOString() : "",
           featuredProductId: article.featuredProductId ?? "",
           isPremium: article.isPremium,
+          metaTitle: article.metaTitle ?? "",
+          metaDescription: article.metaDescription ?? "",
+          focusKeyword: article.focusKeyword ?? "",
+          coverImageAlt: article.coverImageAlt ?? "",
+          tags: article.tags.join(", "),
+          faq: parseFaq(article.faq),
         }}
       />
     </div>
