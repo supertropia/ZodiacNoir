@@ -99,6 +99,17 @@ margin-top: 1.6em;
   scroll-margin-top: 6.5rem;
 }
 
+.prose-zodiac h3 {
+  margin-top: 1.4em;
+  margin-bottom: 0.6em;
+  font-family: var(--font-cinzel), serif;
+  font-size: 1.2em;
+  line-height: 1.35;
+  /* Hereda el color del texto para verse bien tanto en el tema noir como en el claro */
+  color: inherit;
+  scroll-margin-top: 6.5rem;
+}
+
 .prose-zodiac blockquote.pull-quote {
   margin: 2em 0;
   padding: 0.2em 0 0.2em 1.2em;
@@ -112,6 +123,38 @@ margin-top: 1.6em;
 
 .prose-zodiac blockquote.pull-quote p {
   margin-bottom: 0;
+}
+
+/* Imagen con pie de foto: <figure><img><figcaption> */
+.prose-zodiac figure {
+  margin: 2em 0;
+}
+
+.prose-zodiac figure img {
+  margin: 0;
+}
+
+.prose-zodiac figcaption {
+  margin-top: 0.7em;
+  text-align: center;
+  font-family: var(--font-jost), sans-serif;
+  font-size: 0.7em;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* Solo dentro del editor del panel de admin */
+.prose-zodiac figure.is-selected img {
+  outline: 2px solid #C9A24B;
+  outline-offset: 3px;
+}
+
+.prose-zodiac figcaption.is-empty::before {
+  content: "Pie de foto: se ve debajo de la imagen y ayuda a Google a entenderla";
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 .prose-zodiac img {
