@@ -1,5 +1,10 @@
 import type { Config } from "tailwindcss";
 
+// Los colores de la marca leen variables CSS definidas en src/app/globals.css.
+// Así cada tema (claro / noir) cambia la paleta completa sin tocar los componentes,
+// y las opacidades de Tailwind (bg-gold/10, text-gold-pale/90…) siguen funcionando.
+const token = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: ["selector", '[data-theme="noir"]'],
   content: ["./src/**/*.{ts,tsx}"],
@@ -7,20 +12,20 @@ const config: Config = {
     extend: {
       colors: {
         noir: {
-          bg: "#0B0B0D",
-          surface: "#15141A",
-          surface2: "#1D1B23",
-          line: "#2C2A33",
+          bg: token("--c-bg"),
+          surface: token("--c-surface"),
+          surface2: token("--c-surface2"),
+          line: token("--c-line"),
         },
         gold: {
-          DEFAULT: "#C9A24B",
-          bright: "#E6C878",
-          pale: "#EADFC0",
-          dim: "#8A733B",
+          DEFAULT: token("--c-gold"),
+          bright: token("--c-gold-bright"),
+          pale: token("--c-pale"),
+          dim: token("--c-dim"),
         },
         wine: {
-          DEFAULT: "#5C2233",
-          bright: "#7A2E42",
+          DEFAULT: token("--c-wine"),
+          bright: token("--c-wine-bright"),
         },
         day: {
           bg: "#F5F0E4",
