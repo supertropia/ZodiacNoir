@@ -4,6 +4,7 @@ import { requireAdminSession } from "@/lib/require-admin";
 import { estimateReadingMinutes } from "@/lib/slugify";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 import { parsePublishDate, resolvePublishedAt } from "@/lib/publication";
+import { normalizeSeoFields } from "@/lib/seo";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await requireAdminSession();
@@ -32,6 +33,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { date: requestedDate, error: dateError } = parsePublishDate(publishedAt);
     if (dateError) {
       return NextResponse.json({ error: dateError }, { status: 400 });
+    }
+
+    const seo = normalizeSeoFields(body);
+    if (!seo.ok) {
+      return NextResponse.json({ error: seo.error }, { status: 400 });
     }
 
     const current = await prisma.article.findUnique({ where: { id: params.id } });
@@ -67,6 +73,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         }),
         featuredProductId: featuredProductId || null,
         isPremium: Boolean(isPremium),
+        ...seo.data,
       },
     });
 
