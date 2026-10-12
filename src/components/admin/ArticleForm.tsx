@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slugify";
 import { CATEGORIES } from "@/lib/categories";
 import { RichTextEditor } from "./RichTextEditor";
+import { analyzeArticleSeo, SEO_LIMITS, type FaqItem, type SeoCheck } from "@/lib/seo";
 
 export type ArticleFormValues = {
   id?: string;
@@ -20,6 +21,14 @@ export type ArticleFormValues = {
   published: boolean;
   featuredProductId: string;
   isPremium: boolean;
+  // --- SEO ---
+  metaTitle: string;
+  metaDescription: string;
+  focusKeyword: string;
+  coverImageAlt: string;
+  // Etiquetas separadas por coma (el servidor las convierte en lista).
+  tags: string;
+  faq: FaqItem[];
   // Fecha y hora de publicación. Llega como texto ISO desde el servidor y, dentro del
   // formulario, se maneja como valor de <input type="datetime-local"> (hora del dispositivo).
   publishedAt?: string;
@@ -82,6 +91,12 @@ export function ArticleForm({
       published: false,
       featuredProductId: "",
       isPremium: false,
+      metaTitle: "",
+      metaDescription: "",
+      focusKeyword: "",
+      coverImageAlt: "",
+      tags: "",
+      faq: [],
       publishedAt: "",
     }
   );
@@ -104,6 +119,30 @@ export function ArticleForm({
     set("title", title);
     if (!slugTouched) set("slug", slugify(title));
   };
+
+  const seoChecks = analyzeArticleSeo({
+    title: values.title,
+    slug: values.slug,
+    excerpt: values.excerpt,
+    content: values.content,
+    metaTitle: values.metaTitle,
+    metaDescription: values.metaDescription,
+    focusKeyword: values.focusKeyword,
+    coverImage: values.coverImage,
+    coverImageAlt: values.coverImageAlt,
+  });
+
+  const setFaqItem = (index: number, field: keyof FaqItem, value: string) =>
+    setValues((v) => ({
+      ...v,
+      faq: v.faq.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    }));
+  const addFaqItem = () =>
+    setValues((v) =>
+      v.faq.length >= SEO_LIMITS.faqMaxItems ? v : { ...v, faq: [...v.faq, { question: "", answer: "" }] }
+    );
+  const removeFaqItem = (index: number) =>
+    setValues((v) => ({ ...v, faq: v.faq.filter((_, i) => i !== index) }));
 
   const uploadImage = async (file: File): Promise<string | null> => {
     setUploading(true);
@@ -328,6 +367,24 @@ export function ArticleForm({
             </button>
           </div>
         )}
+        {values.coverImage && (
+          <div className="mt-4">
+            <label className={labelClass} htmlFor="coverImageAlt">
+              Texto alternativo de la portada (para Google y lectores de pantalla)
+            </label>
+            <input
+              id="coverImageAlt"
+              className={inputClass}
+              maxLength={SEO_LIMITS.altHard}
+              placeholder="Ej.: Carta astral de Brasil con los tránsitos del balotaje del 25 de octubre de 2026"
+              value={values.coverImageAlt}
+              onChange={(e) => set("coverImageAlt", e.target.value)}
+            />
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Describí lo que muestra la imagen, con la búsqueda principal si encaja de forma natural. Si lo dejás vacío, se usa el título.
+            </p>
+          </div>
+        )}
       </div>
 
       <div>
@@ -353,6 +410,148 @@ export function ArticleForm({
         <label className={labelClass} htmlFor="content">Contenido</label>
         <RichTextEditor value={values.content} onChange={(html) => set("content", html)} onImageUpload={uploadImage} />
       </div>
+
+      <section aria-labelledby="seo-heading" className="space-y-6 rounded-lg border border-gold/25 bg-noir-surface2/30 p-5">
+        <div>
+          <h2 id="seo-heading" className="font-display text-xl text-gold-pale">Posicionamiento en Google (SEO)</h2>
+          <p className="mt-1 font-ui text-xs text-gold-dim">
+            Todo lo de esta sección es opcional: si algo queda vacío, la web usa el título y el copete del artículo.
+            Estos campos no se ven dentro del artículo; son lo que lee Google y lo que aparece al compartir en redes.
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="focusKeyword">Palabra clave principal</label>
+          <input
+            id="focusKeyword"
+            className={inputClass}
+            maxLength={SEO_LIMITS.focusKeywordHard}
+            placeholder="Ej.: elecciones brasil 2026 astrología"
+            value={values.focusKeyword}
+            onChange={(e) => set("focusKeyword", e.target.value)}
+          />
+          <p className="mt-1.5 font-ui text-xs text-gold-dim">
+            La búsqueda exacta que querés posicionar. No se publica: solo activa la lista de control de más abajo.
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="metaTitle">Título SEO (lo que se ve en Google)</label>
+          <input
+            id="metaTitle"
+            className={inputClass}
+            maxLength={SEO_LIMITS.metaTitleHard}
+            placeholder={values.title || "Si lo dejás vacío se usa el título del artículo"}
+            value={values.metaTitle}
+            onChange={(e) => set("metaTitle", e.target.value)}
+          />
+          <p
+            className={`mt-1.5 font-ui text-xs ${
+              (values.metaTitle || values.title).length > SEO_LIMITS.metaTitleIdeal ? "text-wine-bright" : "text-gold-dim"
+            }`}
+          >
+            {(values.metaTitle || values.title).length} / {SEO_LIMITS.metaTitleIdeal} caracteres recomendados. Si lo completás, se usa tal cual
+            (no se agrega «· Zodiac Noir» al final).
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass} htmlFor="metaDescription">Descripción SEO (el texto bajo el título en Google)</label>
+          <textarea
+            id="metaDescription"
+            rows={3}
+            className={inputClass}
+            maxLength={SEO_LIMITS.metaDescriptionHard}
+            placeholder={values.excerpt || "Si la dejás vacía se usa el copete del artículo"}
+            value={values.metaDescription}
+            onChange={(e) => set("metaDescription", e.target.value)}
+          />
+          <p
+            className={`mt-1.5 font-ui text-xs ${
+              (values.metaDescription || values.excerpt).length > SEO_LIMITS.metaDescriptionIdeal
+                ? "text-wine-bright"
+                : "text-gold-dim"
+            }`}
+          >
+            {(values.metaDescription || values.excerpt).length} caracteres. Ideal: entre {SEO_LIMITS.metaDescriptionMin} y{" "}
+            {SEO_LIMITS.metaDescriptionIdeal}.
+          </p>
+        </div>
+
+        <GooglePreview
+          slug={values.slug}
+          title={values.metaTitle || values.title}
+          description={values.metaDescription || values.excerpt}
+        />
+
+        <div>
+          <label className={labelClass} htmlFor="tags">Etiquetas (separadas por coma)</label>
+          <input
+            id="tags"
+            className={inputClass}
+            placeholder="Ej.: Brasil, elecciones 2026, Neptuno en Aries, Saturno en Aries"
+            value={values.tags}
+            onChange={(e) => set("tags", e.target.value)}
+          />
+          <p className="mt-1.5 font-ui text-xs text-gold-dim">
+            Hasta {SEO_LIMITS.tagsMaxCount}. Se publican como palabras clave del artículo en los datos estructurados.
+          </p>
+        </div>
+
+        <div>
+          <p className={labelClass}>Preguntas frecuentes (opcional)</p>
+          <p className="mb-3 font-ui text-xs text-gold-dim">
+            Se muestran al final del artículo, visibles para el lector, y se declaran a Google como FAQPage. Google ya casi no
+            las muestra como desplegable en los resultados de sitios como este, pero sirven al lector y ayudan a que
+            entiendan el tema. Máximo {SEO_LIMITS.faqMaxItems}.
+          </p>
+          <div className="space-y-4">
+            {values.faq.map((item, index) => (
+              <div key={index} className="space-y-2 rounded-lg border border-gold/20 p-3">
+                <label className="block font-ui text-xs text-gold-dim" htmlFor={`faq-q-${index}`}>
+                  Pregunta {index + 1}
+                </label>
+                <input
+                  id={`faq-q-${index}`}
+                  className={inputClass}
+                  maxLength={SEO_LIMITS.faqQuestionHard}
+                  value={item.question}
+                  onChange={(e) => setFaqItem(index, "question", e.target.value)}
+                />
+                <label className="block font-ui text-xs text-gold-dim" htmlFor={`faq-a-${index}`}>
+                  Respuesta
+                </label>
+                <textarea
+                  id={`faq-a-${index}`}
+                  rows={3}
+                  className={inputClass}
+                  maxLength={SEO_LIMITS.faqAnswerHard}
+                  value={item.answer}
+                  onChange={(e) => setFaqItem(index, "answer", e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeFaqItem(index)}
+                  className="font-ui text-xs uppercase tracking-wide text-wine-bright underline hover:text-gold"
+                >
+                  Quitar esta pregunta
+                </button>
+              </div>
+            ))}
+          </div>
+          {values.faq.length < SEO_LIMITS.faqMaxItems && (
+            <button
+              type="button"
+              onClick={addFaqItem}
+              className="focus-ring mt-3 rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10"
+            >
+              + Agregar pregunta
+            </button>
+          )}
+        </div>
+
+        <SeoChecklist checks={seoChecks} />
+      </section>
 
       <label className="flex items-start gap-3 rounded-lg border border-gold/20 bg-noir-surface2/30 p-4 font-ui text-sm text-gold-pale/85">
         <input
@@ -431,5 +630,60 @@ export function ArticleForm({
         )}
       </div>
     </form>
+  );
+}
+
+/** Simulación de cómo se verá el resultado en Google (los textos largos se cortan con «…»). */
+function GooglePreview({ slug, title, description }: { slug: string; title: string; description: string }) {
+  const shownTitle =
+    title.length > SEO_LIMITS.metaTitleIdeal ? `${title.slice(0, SEO_LIMITS.metaTitleIdeal).trimEnd()}…` : title;
+  const shownDescription =
+    description.length > SEO_LIMITS.metaDescriptionIdeal
+      ? `${description.slice(0, SEO_LIMITS.metaDescriptionIdeal).trimEnd()}…`
+      : description;
+
+  return (
+    <div className="rounded-lg border border-gold/20 bg-noir-bg/60 p-4">
+      <p className="mb-3 font-ui text-xs uppercase tracking-wide text-gold-dim">Así se vería en Google</p>
+      <p className="truncate font-ui text-xs text-gold-dim">zodiacnoirweb.com › articulos › {slug || "…"}</p>
+      <p className="mt-1 font-ui text-lg leading-snug text-[#8AB4F8]">{shownTitle || "Título del artículo"}</p>
+      <p className="mt-1 font-ui text-sm leading-snug text-gold-pale/80">
+        {shownDescription || "Acá aparecerá la descripción del artículo."}
+      </p>
+    </div>
+  );
+}
+
+const CHECK_MARK: Record<SeoCheck["status"], { symbol: string; className: string; label: string }> = {
+  ok: { symbol: "✓", className: "text-green-400", label: "Correcto" },
+  warn: { symbol: "!", className: "text-gold", label: "Mejorable" },
+  todo: { symbol: "○", className: "text-gold-dim", label: "Pendiente" },
+};
+
+/** Lista de control en vivo: se recalcula en cada cambio del formulario. */
+function SeoChecklist({ checks }: { checks: SeoCheck[] }) {
+  const okCount = checks.filter((c) => c.status === "ok").length;
+  return (
+    <div className="rounded-lg border border-gold/20 bg-noir-bg/60 p-4">
+      <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">
+        Lista de control SEO · {okCount} de {checks.length} en orden
+      </p>
+      <ul className="mt-3 space-y-2">
+        {checks.map((check) => {
+          const mark = CHECK_MARK[check.status];
+          return (
+            <li key={check.id} className="flex gap-3 font-ui text-sm text-gold-pale/90">
+              <span aria-label={mark.label} role="img" className={`w-4 shrink-0 text-center font-semibold ${mark.className}`}>
+                {mark.symbol}
+              </span>
+              <span>
+                {check.label}
+                {check.hint && <span className="block text-xs text-gold-dim">{check.hint}</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
