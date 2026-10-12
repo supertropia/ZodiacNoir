@@ -2,10 +2,10 @@
 
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { useEffect, useRef, useState } from "react";
 import { repairPastedPlainText } from "@/lib/legacy-content";
+import { FigureImage } from "./FigureImage";
 
 type LinkSearchResult = { type: "articulo" | "producto"; title: string; href: string };
 
@@ -158,8 +158,8 @@ function LinkPanel({ editor, onClose }: { editor: Editor; onClose: () => void })
 }
 
 // Editor visual del contenido del artículo.
-// Soporta: párrafos, **negrita real** (<strong>), subtítulos H2, cita
-// destacada (pull quote) y enlaces (internos vía buscador, o externos a
+// Soporta: párrafos, **negrita real** (<strong>), subtítulos H2 y H3, cita
+// destacada (pull quote), imágenes con pie de foto y texto alternativo (alt) y enlaces (internos vía buscador, o externos a
 // mano). Todo lo demás de StarterKit se desactiva a propósito para no
 // ofrecer opciones que no forman parte del diseño editorial del sitio
 // (listas, tachado, código, etc. quedan afuera por ahora).
@@ -223,10 +223,10 @@ export function RichTextEditor({
         const ed = editorRef.current;
         if (!url || !ed) continue;
         if (at !== null) {
-          ed.chain().focus().insertContentAt(at, { type: "image", attrs: { src: url, alt: "" } }).run();
+          ed.chain().focus().insertContentAt(at, { type: "figureImage", attrs: { src: url, alt: "" } }).run();
           at = null; // las siguientes van a continuación, donde quedó el cursor
         } else {
-          ed.chain().focus().setImage({ src: url, alt: "" }).run();
+          ed.chain().focus().insertContent({ type: "figureImage", attrs: { src: url, alt: "" } }).run();
         }
       }
     } finally {
@@ -237,7 +237,7 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [2] },
+        heading: { levels: [2, 3] },
         bulletList: false,
         orderedList: false,
         codeBlock: false,
@@ -248,10 +248,7 @@ export function RichTextEditor({
           HTMLAttributes: { class: "pull-quote" },
         },
       }),
-      Image.configure({
-        HTMLAttributes: { class: "article-image" },
-        allowBase64: false,
-      }),
+      FigureImage,
       Link.configure({
         openOnClick: false,
         autolink: false,
@@ -321,6 +318,13 @@ export function RichTextEditor({
           + Subtítulo
         </ToolbarButton>
         <ToolbarButton
+          label="Sub-subtítulo H3"
+          active={editor.isActive("heading", { level: 3 })}
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        >
+          + Sub-subtítulo
+        </ToolbarButton>
+        <ToolbarButton
           label="Cita destacada"
           active={editor.isActive("blockquote")}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
@@ -340,6 +344,25 @@ export function RichTextEditor({
         >
           + Imagen
         </ToolbarButton>
+        <ToolbarButton
+          label="Texto alternativo de la imagen seleccionada"
+          active={editor.isActive("figureImage")}
+          onClick={() => {
+            if (!editor.isActive("figureImage")) {
+              window.alert("Primero hacé clic sobre la imagen a la que querés ponerle texto alternativo.");
+              return;
+            }
+            const current = (editor.getAttributes("figureImage").alt as string | undefined) ?? "";
+            const next = window.prompt(
+              "Texto alternativo (invisible): lo leen Google y los lectores de pantalla. Si lo dejás vacío, se usa el pie de foto.",
+              current
+            );
+            if (next === null) return;
+            editor.chain().focus().updateAttributes("figureImage", { alt: next.trim() }).run();
+          }}
+        >
+          Descripción de imagen (alt)
+        </ToolbarButton>
         <input
           ref={fileInputRef}
           type="file"
@@ -351,7 +374,7 @@ export function RichTextEditor({
             if (!file) return;
             const url = await onImageUpload(file);
             if (url) {
-              editor.chain().focus().setImage({ src: url, alt: "" }).run();
+              editor.chain().focus().insertContent({ type: "figureImage", attrs: { src: url, alt: "" } }).run();
             }
           }}
         />
@@ -392,7 +415,11 @@ export function RichTextEditor({
         Para agregar una imagen o una tabla en captura: copiá la captura y pegala con Ctrl+V (Cmd+V en Mac)
         directamente en el texto, o arrastrá el archivo hasta acá. Se sube sola.
         Seleccioná texto y usá los botones de arriba. "+ Subtítulo" convierte la línea completa en un
-        encabezado H2; "+ Cita destacada" la convierte en una cita resaltada. Para volver a texto normal,
+        encabezado H2 (sección principal) y "+ Sub-subtítulo" en un H3 (punto dentro de una sección);
+        "+ Cita destacada" la convierte en una cita resaltada. Cada imagen trae debajo un espacio para el
+        pie de foto: escribilo ahí mismo (se ve para el lector y Google lo asocia a la imagen). Opcionalmente, hacé click
+        sobre la imagen y usá "Descripción de imagen (alt)" para un texto alternativo aparte; si no lo escribís,
+        se usa el pie de foto. Para volver a texto normal,
         parate en esa línea y usá "Párrafo normal". Para borrar una imagen ya insertada, hacé click sobre
         ella y apretá Suprimir/Delete. "+ Enlace interno" busca artículos y productos por título y arma el
         enlace correcto solo: seleccioná primero el texto que querés que quede enlazado (o dejá el cursor
