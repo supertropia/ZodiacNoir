@@ -13,7 +13,7 @@ import sanitizeHtmlLib from "sanitize-html";
 // editor puede generar hoy, más lo necesario para artículos migrados del
 // formato viejo (links e imágenes). Si más adelante el editor agrega algo
 // nuevo, hay que sumarlo acá también.
-const ALLOWED_TAGS = ["p", "strong", "em", "h2", "blockquote", "br", "a", "img"];
+const ALLOWED_TAGS = ["p", "strong", "em", "h2", "h3", "blockquote", "br", "a", "img", "figure", "figcaption"];
 
 export function sanitizeArticleHtml(html: string): string {
   return sanitizeHtmlLib(html ?? "", {
@@ -24,6 +24,8 @@ export function sanitizeArticleHtml(html: string): string {
       img: ["src", "alt"],
     },
     allowedSchemes: ["http", "https", "mailto"],
+    // Un pie de foto vacío no se guarda: así la imagen queda sin <figcaption> en vez de con un hueco.
+    exclusiveFilter: (frame) => frame.tag === "figcaption" && !frame.text.trim(),
   });
 }
 
