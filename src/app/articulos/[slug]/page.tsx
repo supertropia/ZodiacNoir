@@ -17,21 +17,47 @@ import { ensureHtmlContent } from "@/lib/legacy-content";
 import { buildTableOfContents } from "@/lib/toc";
 import { getCategoryLabel } from "@/lib/categories";
 import { isArticleLive, livePublicationFilter, PUBLICATION_TIME_ZONE } from "@/lib/publication";
+import { buildArticleJsonLd, parseFaq, serializeJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const article = await safeQuery(() => prisma.article.findUnique({ where: { slug: params.slug } }));
   if (!article || !isArticleLive(article)) return {};
+
+  // Si la editora completó los campos SEO se usan tal cual; si no, se usan el título y el copete.
+  const title = article.metaTitle || article.title;
+  const description = article.metaDescription || article.excerpt;
+  const keywords = [article.focusKeyword, ...article.tags].filter((k): k is string => Boolean(k));
+  const image = article.coverImage
+    ? [{ url: article.coverImage, alt: article.coverImageAlt || article.title }]
+    : undefined;
+
   return {
-    title: article.title,
-    description: article.excerpt,
+    // "absolute" evita que se le agregue «· Zodiac Noir» al título SEO escrito a mano.
+    title: article.metaTitle ? { absolute: article.metaTitle } : article.title,
+    description,
+    keywords: keywords.length > 0 ? keywords : undefined,
+    authors: [{ name: "Zodiac Noir" }],
     alternates: { canonical: `/articulos/${article.slug}` },
     openGraph: {
-      title: article.title,
-      description: article.excerpt,
+      title,
+      description,
       type: "article",
-      images: article.coverImage ? [article.coverImage] : undefined,
+      url: `/articulos/${article.slug}`,
+      siteName: "Zodiac Noir",
+      locale: "es_LA",
+      publishedTime: (article.publishedAt ?? article.createdAt).toISOString(),
+      modifiedTime: article.updatedAt.toISOString(),
+      section: getCategoryLabel(article.category),
+      tags: article.tags.length > 0 ? article.tags : undefined,
+      images: image,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image,
     },
   };
 }
@@ -57,9 +83,27 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   const { headings, html: renderHtml } = buildTableOfContents(sanitizedHtml);
   // Si el artículo está bloqueado, el texto para "Escuchar" tampoco puede filtrar el
   // contenido completo — usamos solo el copete, igual que la vista en pantalla.
+  const bodyText = htmlToPlainText(sanitizedHtml);
   const plainText = isLocked
     ? `${article.title}. ${article.excerpt}`
-    : `${article.title}. ${htmlToPlainText(sanitizedHtml)}`;
+    : `${article.title}. ${bodyText}`;
+
+  // Las preguntas frecuentes solo se muestran (y se declaran a Google) si el lector puede ver el artículo.
+  const faq = isLocked ? [] : parseFaq(article.faq);
+  const jsonLd = buildArticleJsonLd({
+    siteUrl,
+    url,
+    title: article.title,
+    description: article.metaDescription || article.excerpt,
+    image: article.coverImage,
+    datePublished: article.publishedAt ?? article.createdAt,
+    dateModified: article.updatedAt,
+    categoryLabel: getCategoryLabel(article.category),
+    keywords: [article.focusKeyword, ...article.tags].filter((k): k is string => Boolean(k)),
+    wordCount: bodyText.split(/\s+/).filter(Boolean).length,
+    isPremium: article.isPremium,
+    faq,
+  });
 
   const related = await safeQuery(() =>
     prisma.article.findMany({
@@ -88,6 +132,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
   return (
     <article className="mx-auto max-w-3xl px-5 py-16">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <ViewTracker slug={article.slug} />
       <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">
         {getCategoryLabel(article.category)}
@@ -99,7 +144,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={article.coverImage}
-          alt=""
+          alt={article.coverImageAlt || article.title}
           className="mt-8 w-full rounded-2xl border border-gold/20 object-cover"
         />
       )}
@@ -141,6 +186,22 @@ export default async function ArticlePage({ params }: { params: { slug: string }
           className="prose-zodiac mt-10 font-body text-xl leading-relaxed text-gold-pale/90"
           dangerouslySetInnerHTML={{ __html: renderHtml }}
         />
+      )}
+
+      {faq.length > 0 && (
+        <section aria-labelledby="faq-heading" className="mt-14 border-t border-gold/15 pt-10">
+          <h2 id="faq-heading" className="font-display text-2xl text-gold-pale">
+            Preguntas frecuentes
+          </h2>
+          <div className="mt-6 space-y-6">
+            {faq.map((item) => (
+              <div key={item.question}>
+                <h3 className="font-display text-lg text-gold">{item.question}</h3>
+                <p className="mt-2 font-body text-xl leading-relaxed text-gold-pale/90">{item.answer}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {(related.length > 0 || featuredProducts.length > 0) && (
