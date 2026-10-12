@@ -18,11 +18,13 @@ const PrefsContext = createContext<PrefsContextType | null>(null);
 const SIZES: FontSize[] = ["sm", "md", "lg"];
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("noir");
+  // El tema claro es el predeterminado. La clave "zn-theme-v2" es nueva a propósito: así los
+  // visitantes que ya tenían guardado "noir" (que se guardaba solo, sin elegirlo) ven el tema claro.
+  const [theme, setTheme] = useState<Theme>("day");
   const [fontSize, setFontSize] = useState<FontSize>("md");
 
   useEffect(() => {
-    const storedTheme = window.localStorage.getItem("zn-theme") as Theme | null;
+    const storedTheme = window.localStorage.getItem("zn-theme-v2") as Theme | null;
     const storedSize = window.localStorage.getItem("zn-fontsize") as FontSize | null;
     if (storedTheme) setTheme(storedTheme);
     if (storedSize) setFontSize(storedSize);
@@ -30,7 +32,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    window.localStorage.setItem("zn-theme", theme);
+    window.localStorage.setItem("zn-theme-v2", theme);
   }, [theme]);
 
   useEffect(() => {
