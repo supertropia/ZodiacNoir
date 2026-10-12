@@ -1,3 +1,4 @@
+// Los colores salen de las variables del tema (ver globals.css): se ve bien tanto en tema claro como en noir.
 export function ConstellationEye({ className = "", size = 120 }: { className?: string; size?: number }) {
   return (
     <svg
@@ -8,8 +9,8 @@ export function ConstellationEye({ className = "", size = 120 }: { className?: s
       role="img"
       aria-label="Emblema Zodiac Noir: ojo y luna creciente enmarcados por el círculo zodiacal"
     >
-      <circle cx="100" cy="100" r="92" fill="none" stroke="#C9A24B" strokeWidth="1" opacity="0.55" />
-      <circle cx="100" cy="100" r="76" fill="none" stroke="#C9A24B" strokeWidth="0.6" opacity="0.4" />
+      <circle cx="100" cy="100" r="92" fill="none" className="stroke-gold" strokeWidth="1.4" opacity="0.8" />
+      <circle cx="100" cy="100" r="76" fill="none" className="stroke-gold" strokeWidth="0.8" opacity="0.55" />
 
       {/* Marcas del círculo zodiacal */}
       {Array.from({ length: 12 }).map((_, i) => {
@@ -18,25 +19,25 @@ export function ConstellationEye({ className = "", size = 120 }: { className?: s
         const y1 = 100 + Math.sin(angle) * 84;
         const x2 = 100 + Math.cos(angle) * 92;
         const y2 = 100 + Math.sin(angle) * 92;
-        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#C9A24B" strokeWidth="1" opacity="0.5" />;
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="stroke-gold" strokeWidth="1.2" opacity="0.7" />;
       })}
 
       {/* Ojo */}
       <path
         d="M30 100 Q100 55 170 100 Q100 145 30 100 Z"
         fill="none"
-        stroke="#C9A24B"
-        strokeWidth="1.4"
+        className="stroke-gold"
+        strokeWidth="1.8"
       />
       {/* Luna creciente como iris */}
       <path
         d="M112 74 A32 32 0 1 0 112 126 A24 24 0 1 1 112 74 Z"
-        fill="#C9A24B"
+        className="fill-gold"
       />
       {/* Estrella dentro de la luna */}
       <path
         d="M100 90 L104 98 L112 100 L104 102 L100 110 L96 102 L88 100 L96 98 Z"
-        fill="#0B0B0D"
+        className="fill-[rgb(var(--c-moonstar))]"
         opacity="0.85"
       />
 
@@ -44,7 +45,14 @@ export function ConstellationEye({ className = "", size = 120 }: { className?: s
       {[
         [45, 55], [155, 50], [40, 150], [160, 148], [100, 25], [100, 175],
       ].map(([cx, cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r="1.6" fill="#EADFC0" className="twinkle" style={{ animationDelay: `${i * 0.4}s` }} />
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r="1.8"
+          className="twinkle fill-[rgb(var(--c-star))]"
+          style={{ animationDelay: `${i * 0.4}s` }}
+        />
       ))}
     </svg>
   );
