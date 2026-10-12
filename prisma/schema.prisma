@@ -161,6 +161,19 @@ model Article {
   publishedAt    DateTime?
   // Si es true, solo lo pueden leer completo los miembros con membresía activa.
   isPremium      Boolean   @default(false)
+  // --- SEO (todos opcionales: si están vacíos, la web usa título y copete) ---
+  // Título que aparece en Google y en la pestaña del navegador (ideal: hasta ~60 caracteres).
+  metaTitle        String?
+  // Descripción que aparece bajo el título en Google (ideal: 120 a 155 caracteres).
+  metaDescription  String?
+  // Palabra clave principal; solo se usa para la lista de control del panel de admin.
+  focusKeyword     String?
+  // Texto alternativo de la imagen de portada (lo leen Google y los lectores de pantalla).
+  coverImageAlt    String?
+  // Etiquetas del artículo (se publican como "keywords" en los datos estructurados).
+  tags             String[]  @default([])
+  // Preguntas frecuentes: lista de { question, answer }. Se muestran al final y alimentan el schema FAQPage.
+  faq              Json      @default("[]")
   featuredProduct   Product? @relation(fields: [featuredProductId], references: [id])
   featuredProductId String?
   createdAt      DateTime  @default(now())
