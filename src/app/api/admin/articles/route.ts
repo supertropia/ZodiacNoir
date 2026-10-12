@@ -4,6 +4,7 @@ import { requireAdminSession } from "@/lib/require-admin";
 import { estimateReadingMinutes } from "@/lib/slugify";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 import { parsePublishDate, resolvePublishedAt } from "@/lib/publication";
+import { normalizeSeoFields } from "@/lib/seo";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -33,6 +34,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: dateError }, { status: 400 });
     }
 
+    const seo = normalizeSeoFields(body);
+    if (!seo.ok) {
+      return NextResponse.json({ error: seo.error }, { status: 400 });
+    }
+
     const existing = await prisma.article.findUnique({ where: { slug } });
     if (existing) {
       return NextResponse.json({ error: "Ya existe un artículo con ese slug." }, { status: 409 });
@@ -58,6 +64,7 @@ export async function POST(req: Request) {
         publishedAt: resolvePublishedAt({ published: Boolean(published), requested: requestedDate }),
         featuredProductId: featuredProductId || null,
         isPremium: Boolean(isPremium),
+        ...seo.data,
       },
     });
 
