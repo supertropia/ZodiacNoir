@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" data-theme="noir" data-fontsize="md" className={`${cinzel.variable} ${cormorant.variable} ${jost.variable}`}>
+    <html lang="es" data-theme="day" data-fontsize="md" className={`${cinzel.variable} ${cormorant.variable} ${jost.variable}`}>
       <body className="bg-velvet min-h-screen font-body">
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && (
           <Script
