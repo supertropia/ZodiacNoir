@@ -26,11 +26,15 @@ export async function Header() {
       <div className="relative mx-auto max-w-6xl px-5">
         <div className="flex items-center justify-between gap-3 py-3">
           <Link href="/" className="group flex items-center gap-2">
-            <svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true">
-              <circle cx="50" cy="50" r="46" fill="none" stroke="#C9A24B" strokeWidth="1.2" />
-              <path d="M58 34a18 18 0 100 32 13 13 0 010-32z" fill="#C9A24B" />
+            {/* Marca: disco negro con aro y luna dorados (destaca sobre el fondo claro) */}
+            <svg width="40" height="40" viewBox="0 0 100 100" aria-hidden="true">
+              <circle cx="50" cy="50" r="49" fill="#120D1C" />
+              <circle cx="50" cy="50" r="44" fill="none" stroke="#C9A24B" strokeWidth="2.5" />
+              <path d="M58 34a18 18 0 100 32 13 13 0 010-32z" fill="#E0B13A" />
+              <circle cx="73" cy="66" r="2.6" fill="#E0B13A" />
+              <circle cx="76" cy="35" r="2" fill="#E0B13A" />
             </svg>
-            <span className="font-display text-lg tracking-widest2 text-gold-pale group-hover:text-gold">
+            <span className="font-display text-lg font-bold tracking-widest2 text-gold-pale group-hover:text-gold">
               ZODIAC <span className="text-gold">NOIR</span>
             </span>
           </Link>
