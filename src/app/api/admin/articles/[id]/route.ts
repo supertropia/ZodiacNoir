@@ -1,5 +1,6 @@
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeQuery } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { estimateReadingMinutes } from "@/lib/slugify";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
@@ -40,17 +41,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: seo.error }, { status: 400 });
     }
 
-    const current = await prisma.article.findUnique({ where: { id: params.id } });
+    const current = await safeQuery(() => prisma.article.findUnique({ where: { id: params.id } }));
     if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
     if (slug !== current.slug) {
-      const clashing = await prisma.article.findUnique({ where: { slug } });
+      const clashing = await safeQuery(() => prisma.article.findUnique({ where: { slug } }));
       if (clashing) return NextResponse.json({ error: "Ya existe otro artículo con ese slug." }, { status: 409 });
     }
 
     const cleanContent = sanitizeArticleHtml(content);
 
-    const article = await prisma.article.update({
+    // Si el motor de Prisma falla al azar (error intermitente conocido), se reintenta solo.
+    const article = await safeQuery(() => prisma.article.update({
       where: { id: params.id },
       data: {
         slug,
@@ -75,7 +77,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         isPremium: Boolean(isPremium),
         ...seo.data,
       },
-    });
+    }));
+
+    // Comprobación final: se vuelve a leer el artículo desde la base de datos antes de decir "guardado".
+    const verified = await safeQuery(() =>
+      prisma.article.findUnique({ where: { id: params.id }, select: { id: true } })
+    );
+    if (!verified) {
+      console.error("El artículo se actualizó pero no se pudo leer de vuelta:", params.id);
+      return NextResponse.json(
+        { error: "El servidor no pudo confirmar que los cambios quedaran guardados." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ article });
   } catch (error) {
