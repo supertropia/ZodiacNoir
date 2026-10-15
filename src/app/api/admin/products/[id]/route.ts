@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
+import { normalizeSeoFields } from "@/lib/seo";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await requireAdminSession();
@@ -28,6 +29,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     if (!slug || !title || !description || !priceLabel) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    }
+
+    const seo = normalizeSeoFields(body);
+    if (!seo.ok) {
+      return NextResponse.json({ error: seo.error }, { status: 400 });
     }
 
     const current = await prisma.product.findUnique({ where: { id: params.id } });
@@ -58,6 +64,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         audienceText: audienceText || null,
         salesCount: Number.isFinite(salesCount) ? salesCount : null,
         fileUrl: fileUrl || null,
+        ...seo.data,
         published: Boolean(published),
       },
     });
