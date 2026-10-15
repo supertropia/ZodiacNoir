@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeQuery } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { estimateReadingMinutes } from "@/lib/slugify";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
@@ -39,14 +39,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: seo.error }, { status: 400 });
     }
 
-    const existing = await prisma.article.findUnique({ where: { slug } });
+    const existing = await safeQuery(() => prisma.article.findUnique({ where: { slug } }));
     if (existing) {
       return NextResponse.json({ error: "Ya existe un artículo con ese slug." }, { status: 409 });
     }
 
     const cleanContent = sanitizeArticleHtml(content);
 
-    const article = await prisma.article.create({
+    // Si el motor de Prisma falla al azar (error intermitente conocido), se reintenta solo.
+    const article = await safeQuery(() => prisma.article.create({
       data: {
         slug,
         title,
@@ -66,11 +67,30 @@ export async function POST(req: Request) {
         isPremium: Boolean(isPremium),
         ...seo.data,
       },
-    });
+    }), 1);
+
+    // Comprobación final: se vuelve a leer el artículo desde la base de datos antes de decir "guardado".
+    const verified = await safeQuery(() =>
+      prisma.article.findUnique({ where: { id: article.id }, select: { id: true } })
+    );
+    if (!verified) {
+      console.error("El artículo se creó pero no se pudo leer de vuelta:", article.id);
+      return NextResponse.json(
+        { error: "El servidor no pudo confirmar que el artículo quedara guardado." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ article }, { status: 201 });
   } catch (error) {
     console.error("Error creando artículo:", error);
+    // P2002 = el slug ya existe. Con el reintento automático puede pasar si el primer intento sí llegó a guardarse.
+    if ((error as { code?: string })?.code === "P2002") {
+      return NextResponse.json(
+        { error: "Ya existe un artículo con ese slug (puede que el guardado anterior sí se haya completado: revisa la lista del panel)." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: "No se pudo crear el artículo." }, { status: 500 });
   }
 }
