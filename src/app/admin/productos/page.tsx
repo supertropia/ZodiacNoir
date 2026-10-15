@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getStoreViewStats, productTarget, STORE_PAGE_TARGET } from "@/lib/store-views";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { CopyProductLinkButton } from "@/components/admin/CopyProductLinkButton";
 import { TogglePublishProductButton } from "@/components/admin/TogglePublishProductButton";
 
 export const dynamic = "force-dynamic";
 
+const NUMBER_FORMAT = new Intl.NumberFormat("es-AR");
+
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({ orderBy: { createdAt: "desc" } });
+  const viewStats = await getStoreViewStats();
+  const storeStats = viewStats.get(STORE_PAGE_TARGET);
 
   return (
     <div>
@@ -18,6 +23,26 @@ export default async function AdminProductsPage() {
           + Nuevo producto
         </Link>
       </div>
+
+      {/* Visitas: la página /tienda y cada libro (se cuenta una vez por visitante y pestaña; tus visitas no suman) */}
+      <section className="mb-8 rounded-xl border border-gold/15 bg-noir-surface/40 p-5">
+        <h2 className="font-display text-lg text-gold-pale">Visitas a la tienda</h2>
+        <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+          {[
+            { label: "En total", value: storeStats?.total ?? 0 },
+            { label: "Últimos 7 días", value: storeStats?.last7 ?? 0 },
+            { label: "Últimos 30 días", value: storeStats?.last30 ?? 0 },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg border border-gold/15 px-2 py-3">
+              <p className="font-display text-2xl text-gold">{NUMBER_FORMAT.format(item.value)}</p>
+              <p className="mt-1 font-ui text-[11px] uppercase tracking-wide text-gold-dim">{item.label}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 font-ui text-xs text-gold-dim">
+          Es la página /tienda. Más abajo ves cuántas veces se abrió la ficha de cada libro.
+        </p>
+      </section>
 
       {products.length === 0 && (
         <p className="font-body text-lg text-gold-dim">Todavía no cargaste ningún producto.</p>
@@ -34,6 +59,14 @@ export default async function AdminProductsPage() {
               </div>
               <h3 className="font-display text-lg text-gold-pale">{p.title} · {p.priceLabel}</h3>
               <p className="font-ui text-xs text-gold-dim">variant: {p.lemonVariantId} {p.fileUrl ? "· PDF cargado" : "· falta PDF"}</p>
+              {p.published && (
+                <p className="mt-1 font-ui text-xs text-gold-pale/80">
+                  <span className="text-gold">{NUMBER_FORMAT.format(viewStats.get(productTarget(p.id))?.total ?? 0)}</span>{" "}
+                  {(viewStats.get(productTarget(p.id))?.total ?? 0) === 1 ? "visita" : "visitas"} en total ·{" "}
+                  <span className="text-gold">{NUMBER_FORMAT.format(viewStats.get(productTarget(p.id))?.last7 ?? 0)}</span> en los últimos 7 días ·{" "}
+                  <span className="text-gold">{NUMBER_FORMAT.format(viewStats.get(productTarget(p.id))?.last30 ?? 0)}</span> en los últimos 30
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <CopyProductLinkButton slug={p.slug} />
