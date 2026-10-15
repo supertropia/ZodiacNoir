@@ -13,7 +13,7 @@ export type ProductCardData = {
 export function ProductMiniCard({ product }: { product: ProductCardData }) {
   return (
     <Link
-      href={`/tienda?producto=${product.slug}`}
+      href={`/tienda/${product.slug}`}
       className="group flex h-full flex-row overflow-hidden rounded-2xl border border-gold/15 bg-noir-surface/40 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:bg-noir-surface hover:shadow-xl hover:shadow-black/30 sm:flex-col"
     >
       {product.coverImage && (
