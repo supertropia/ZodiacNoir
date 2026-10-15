@@ -3,6 +3,9 @@
 import { useState, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slugify";
+import { ProductSeoSection } from "@/components/admin/ProductSeoSection";
+import { FormattedText } from "@/components/store/FormattedText";
+import type { FaqItem } from "@/lib/seo";
 
 type ContentHighlight = { title: string; description: string };
 type Testimonial = { name: string; stars: number; text: string; shared: number };
@@ -29,6 +32,14 @@ export type ProductFormValues = {
   audienceText: string;
   salesCount: number | null;
   fileUrl: string;
+  // --- SEO ---
+  metaTitle: string;
+  metaDescription: string;
+  focusKeyword: string;
+  coverImageAlt: string;
+  // Etiquetas separadas por coma (el servidor las limpia y las guarda como lista)
+  tags: string;
+  faq: FaqItem[];
   published: boolean;
 };
 
@@ -38,7 +49,9 @@ const emptyValues: ProductFormValues = {
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
-  audienceText: "", salesCount: null, fileUrl: "", published: false,
+  audienceText: "", salesCount: null, fileUrl: "",
+  metaTitle: "", metaDescription: "", focusKeyword: "", coverImageAlt: "", tags: "", faq: [],
+  published: false,
 };
 
 export function ProductForm({ initial }: { initial?: ProductFormValues }) {
@@ -191,17 +204,24 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="description">Descripción corta (para la tarjeta)</label>
-          <textarea id="description" required rows={3} className={inputClass}
+          <label className={labelClass} htmlFor="description">Descripción del producto</label>
+          <textarea id="description" required rows={10} className={inputClass}
             value={values.description} onChange={(e) => set("description", e.target.value)} />
+          <p className="mt-1.5 font-ui text-xs text-gold-dim">
+            En la tarjeta se ven solo las primeras líneas; en la ficha y en la página del libro se ve completa.
+            {" "}{FORMAT_HINT}
+          </p>
+          <TextPreview text={values.description} autoParagraphs />
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="audienceText">Para quién es esto (2-3 líneas)</label>
-          <textarea id="audienceText" rows={3} className={inputClass}
+          <label className={labelClass} htmlFor="audienceText">Para quién es esto</label>
+          <textarea id="audienceText" rows={8} className={inputClass}
             value={values.audienceText}
             onChange={(e) => set("audienceText", e.target.value)}
-            placeholder="Ej. Para quienes quieren entender el eclipse desde el mito, no solo desde el horóscopo, e integrar lo que se cierra con un trabajo real de journaling." />
+            placeholder={"Este libro es para ti si:\n• Sientes que algo se está moviendo en tu vida.\n• Estás cerca de los 29, 37 o 42 años.\n• Quieres entender tu carta natal desde cero."} />
+          <p className="mt-1.5 font-ui text-xs text-gold-dim">{FORMAT_HINT}</p>
+          <TextPreview text={values.audienceText} />
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
@@ -342,6 +362,9 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
 
       <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Qué vas a recibir (tarjetas de contenido)</p>
+        <p className="font-ui text-xs text-gold-dim">
+          Cada tarjeta se ve completa en la ficha, una al lado de la otra. {FORMAT_HINT}
+        </p>
 
         {values.contentHighlights.map((h, i) => (
           <div key={i} className="space-y-2 rounded-lg border border-gold/15 p-4">
@@ -351,8 +374,9 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
             </div>
             <input className={inputClass} placeholder="Título, ej. Orientación junguiana"
               value={h.title} onChange={(e) => updateHighlight(i, "title", e.target.value)} />
-            <textarea className={inputClass} rows={2} placeholder="Descripción breve"
+            <textarea className={inputClass} rows={6} placeholder={"Descripción. Para una lista, una línea por ítem:\n• Primer punto\n• Segundo punto"}
               value={h.description} onChange={(e) => updateHighlight(i, "description", e.target.value)} />
+            <TextPreview text={h.description} />
           </div>
         ))}
 
@@ -402,6 +426,11 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
           onChange={(e) => set("salesCount", e.target.value === "" ? null : Number(e.target.value))} />
       </div>
 
+      <ProductSeoSection
+        values={values}
+        onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+      />
+
       <div>
         <label className={labelClass}>Archivo PDF</label>
         <div className="flex items-center gap-3">
@@ -431,5 +460,19 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         </button>
       </div>
     </form>
+  );
+}
+
+const FORMAT_HINT =
+  "Para separar párrafos dejá una línea en blanco. Para armar una lista, empezá cada línea con «•» o «-». Abajo ves cómo se va a ver.";
+
+/** Vista previa de cómo se verá el texto en la ficha: párrafos separados y listas con viñetas. */
+function TextPreview({ text, autoParagraphs = false }: { text: string; autoParagraphs?: boolean }) {
+  if (!text.trim()) return null;
+  return (
+    <div className="mt-3 rounded-lg border border-gold/15 bg-noir-bg/50 p-4">
+      <p className="mb-2 font-ui text-[11px] uppercase tracking-wide text-gold-dim">Así se va a ver</p>
+      <FormattedText text={text} autoParagraphs={autoParagraphs} className="font-body text-base leading-relaxed text-gold-pale/90" />
+    </div>
   );
 }
