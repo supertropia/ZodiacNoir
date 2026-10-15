@@ -74,7 +74,11 @@ function ArticleRow({
   );
 }
 
-export default async function AdminDashboard() {
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams?: { guardado?: string };
+}) {
   const now = new Date();
   const articles = await prisma.article.findMany({
     orderBy: { updatedAt: "desc" },
@@ -93,8 +97,39 @@ export default async function AdminDashboard() {
     .sort((a, b) => (a.publishedAt?.getTime() ?? 0) - (b.publishedAt?.getTime() ?? 0));
   const rest = articles.filter((a) => getPublicationStatus(a, now) !== "scheduled");
 
+  // Confirmación del último guardado: se arma con lo que realmente hay en la base de datos.
+  const savedId = typeof searchParams?.guardado === "string" ? searchParams.guardado : "";
+  const savedArticle = savedId ? articles.find((a) => a.id === savedId) : undefined;
+  const savedStatus = savedArticle ? getPublicationStatus(savedArticle, now) : null;
+
   return (
     <div>
+      {savedId && savedArticle && savedStatus && (
+        <div
+          role="status"
+          className="mb-8 rounded-xl border border-green-800/50 bg-green-900/20 px-5 py-4 font-ui text-sm text-green-300"
+        >
+          <strong className="font-medium">Guardado. </strong>
+          {savedStatus === "draft" && <>«{savedArticle.title}» quedó como borrador.</>}
+          {savedStatus === "scheduled" && savedArticle.publishedAt && (
+            <>
+              «{savedArticle.title}» quedó programado para el {formatPublicationDateTime(savedArticle.publishedAt)} (hora de
+              Argentina). Lo encuentras en el desplegable «Próximas publicaciones».
+            </>
+          )}
+          {savedStatus === "published" && <>«{savedArticle.title}» está publicado.</>}
+        </div>
+      )}
+      {savedId && !savedArticle && (
+        <div
+          role="alert"
+          className="mb-8 rounded-xl border border-wine/50 bg-wine/10 px-5 py-4 font-ui text-sm text-wine-bright"
+        >
+          <strong className="font-medium">Atención: </strong>
+          el servidor confirmó el guardado, pero ese artículo no aparece en la base de datos. Anota la hora exacta y revisa
+          los registros (logs) de Vercel antes de seguir.
+        </div>
+      )}
       <div className="mb-8 grid gap-4 sm:grid-cols-2">
         <Link href="/admin/planes" className="rounded-xl border border-gold/15 bg-noir-surface/40 p-5 transition hover:border-gold/40">
           <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Monetización</p>
@@ -139,20 +174,41 @@ export default async function AdminDashboard() {
         <p className="font-body text-lg text-gold-dim">Todavía no creaste ningún artículo.</p>
       )}
 
-      {scheduled.length > 0 && (
-        <section className="mb-10">
-          <h2 className="mb-1 font-display text-xl text-gold-pale">Próximas publicaciones</h2>
-          <p className="mb-4 font-ui text-xs text-gold-dim">
-            {scheduled.length} {scheduled.length === 1 ? "artículo programado" : "artículos programados"}, ordenados
-            por fecha. Se publican solos a la hora indicada (hora de Argentina).
-          </p>
-          <div className="space-y-3">
-            {scheduled.map((a) => (
-              <ArticleRow key={a.id} article={a} now={now} stats={viewStats.get(a.id)} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Desplegable con todo lo programado. Siempre se muestra (aunque esté vacío) para que se sepa dónde mirar. */}
+      <details open className="group mb-10 rounded-xl border border-gold/20 bg-noir-surface/30">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="flex flex-wrap items-center gap-3">
+            <span aria-hidden="true" className="text-gold transition-transform group-open:rotate-90">
+              ▸
+            </span>
+            <span className="font-display text-xl text-gold-pale">Próximas publicaciones</span>
+            <span className="rounded-full bg-gold/25 px-2.5 py-0.5 font-ui text-xs uppercase tracking-wide text-gold-bright">
+              {scheduled.length} {scheduled.length === 1 ? "programado" : "programados"}
+            </span>
+          </span>
+          {scheduled[0]?.publishedAt && (
+            <span className="hidden font-ui text-xs text-gold-dim sm:block">
+              Próximo: {formatPublicationDateTime(scheduled[0].publishedAt)}
+            </span>
+          )}
+        </summary>
+        <div className="space-y-3 border-t border-gold/15 p-5">
+          {scheduled.length === 0 ? (
+            <p className="font-ui text-sm text-gold-dim">
+              No hay artículos programados. Al elegir una fecha futura y pulsar «Programar publicación», aparecerán acá.
+            </p>
+          ) : (
+            <>
+              <p className="font-ui text-xs text-gold-dim">
+                Ordenados por fecha. Se publican solos a la hora indicada (hora de Argentina).
+              </p>
+              {scheduled.map((a) => (
+                <ArticleRow key={a.id} article={a} now={now} stats={viewStats.get(a.id)} />
+              ))}
+            </>
+          )}
+        </div>
+      </details>
 
       {scheduled.length > 0 && rest.length > 0 && (
         <h2 className="mb-4 font-display text-xl text-gold-pale">Resto de los artículos</h2>
