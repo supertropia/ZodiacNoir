@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slugify";
 import { CATEGORIES } from "@/lib/categories";
 import { RichTextEditor } from "./RichTextEditor";
-import { analyzeArticleSeo, SEO_LIMITS, type FaqItem, type SeoCheck } from "@/lib/seo";
+import { analyzeArticleSeo, parseTags, SEO_LIMITS, type FaqItem, type SeoCheck } from "@/lib/seo";
 
 export type ArticleFormValues = {
   id?: string;
@@ -68,6 +68,92 @@ function formatLocal(d: Date): string {
   });
 }
 
+/** Un contenido que solo tiene etiquetas HTML vacías (por ejemplo "<p></p>") cuenta como vacío. */
+function isContentEmpty(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").trim().length === 0;
+}
+
+// Mismo límite que aplica el servidor a las fechas de publicación.
+const MAX_DAYS_AHEAD = 365 * 2;
+
+/** Copia local del borrador en el navegador: si algo falla al guardar, el texto no se pierde. */
+const BACKUP_PREFIX = "zn-article-backup:";
+const BACKUP_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+type FormBackup = { savedAt: number; values: ArticleFormValues };
+
+type PreflightIssue = {
+  level: "error" | "warn";
+  text: string;
+  // true = solo impide «Publicar / Programar»; el borrador se puede guardar igual.
+  onlyPublish?: boolean;
+};
+
+/**
+ * Revisión previa al guardado. Los "error" son cosas que el servidor rechazaría
+ * (mismas reglas que /api/admin/articles); los "warn" son avisos que no impiden guardar.
+ */
+function buildPreflight(
+  values: ArticleFormValues,
+  publishDate: Date | null,
+  isFuture: boolean,
+  seoChecks: SeoCheck[],
+  uploading: boolean
+): PreflightIssue[] {
+  const issues: PreflightIssue[] = [];
+  const error = (text: string, onlyPublish = false) => issues.push({ level: "error", text, onlyPublish });
+  const warn = (text: string, onlyPublish = false) => issues.push({ level: "warn", text, onlyPublish });
+
+  if (uploading) error("Se está subiendo una imagen: espera a que termine antes de guardar, o no quedará en el artículo.");
+  if (!values.title.trim()) error("Falta el título.");
+  if (!values.slug.trim()) error("Falta el slug (la dirección del artículo).");
+  if (!values.excerpt.trim()) error("Falta el copete / resumen breve.");
+  if (!values.category) error("Falta elegir la categoría.");
+  if (isContentEmpty(values.content)) error("El contenido del artículo está vacío.");
+
+  const rawDate = (values.publishedAt ?? "").trim();
+  if (rawDate && !publishDate) {
+    error("La fecha de publicación no es válida. Elige otra o pulsa «Quitar fecha».", true);
+  }
+  if (publishDate) {
+    if (publishDate.getFullYear() < 2000) {
+      error("La fecha de publicación tiene un año que no parece correcto. Revísala.", true);
+    } else if (publishDate.getTime() > Date.now() + MAX_DAYS_AHEAD * 24 * 60 * 60 * 1000) {
+      error("La fecha de publicación está demasiado lejos (máximo 2 años hacia adelante).", true);
+    } else if (!isFuture) {
+      warn("La fecha elegida ya pasó: al publicar, el artículo se verá de inmediato con esa fecha.", true);
+    }
+  }
+
+  const tags = parseTags(values.tags);
+  if (tags.length > SEO_LIMITS.tagsMaxCount) {
+    error(`Hay ${tags.length} etiquetas y el máximo es ${SEO_LIMITS.tagsMaxCount}. Quita ${tags.length - SEO_LIMITS.tagsMaxCount}.`);
+  }
+  const longTag = tags.find((t) => t.length > SEO_LIMITS.tagHard);
+  if (longTag) {
+    error(`La etiqueta «${longTag.slice(0, 30)}…» supera los ${SEO_LIMITS.tagHard} caracteres.`);
+  }
+
+  if (values.faq.some((f) => !f.question.trim() || !f.answer.trim())) {
+    warn("Hay preguntas frecuentes incompletas (sin pregunta o sin respuesta): se descartan al guardar.");
+  }
+
+  if (!values.coverImage.trim()) {
+    warn("Sin imagen de portada: la tarjeta del artículo se verá sin imagen.", true);
+  }
+
+  const pendingSeo = seoChecks.filter((c) => c.status !== "ok").length;
+  if (pendingSeo > 0) {
+    warn(
+      `${pendingSeo} ${pendingSeo === 1 ? "punto" : "puntos"} de la lista de control SEO sin resolver (no impide publicar).`,
+      true
+    );
+  }
+
+  // Errores primero, avisos después.
+  return [...issues.filter((i) => i.level === "error"), ...issues.filter((i) => i.level === "warn")];
+}
+
 export function ArticleForm({
   initial,
   products,
@@ -102,9 +188,27 @@ export function ArticleForm({
   );
   const [slugTouched, setSlugTouched] = useState(isEditing);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
+  // Cantidad de imágenes que se están subiendo ahora mismo (pueden ser varias a la vez).
+  const [uploadsInFlight, setUploadsInFlight] = useState(0);
+  const uploading = uploadsInFlight > 0;
+  // Error de subida de imagen: se muestra junto al lugar donde se intentó subir (portada o editor de texto).
+  const [uploadError, setUploadError] = useState<{ where: "cover" | "editor"; message: string } | null>(null);
+  // Errores al guardar: se muestran junto a los botones, que es donde se está mirando.
+  const [saveError, setSaveError] = useState("");
+  const saveErrorRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Copia local del texto (por si falla el guardado o se cierra la pestaña) ---
+  const backupKey = `${BACKUP_PREFIX}${initial?.id ?? "nuevo"}`;
+  const [backup, setBackup] = useState<FormBackup | null>(null);
+  // Se cambia al restaurar una copia para que el editor de texto se vuelva a crear con el contenido restaurado.
+  const [editorKey, setEditorKey] = useState(0);
+  // Estado con el que se abrió el formulario: sirve para saber si hay cambios sin guardar.
+  const baselineRef = useRef<string | null>(null);
+  if (baselineRef.current === null) baselineRef.current = JSON.stringify(values);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const savedRef = useRef(false);
 
   const publishDate = parseLocalInput(values.publishedAt);
   const isFuture = publishDate !== null && publishDate.getTime() > Date.now();
@@ -132,6 +236,76 @@ export function ArticleForm({
     coverImageAlt: values.coverImageAlt,
   });
 
+  const preflight = buildPreflight(values, publishDate, isFuture, seoChecks, uploading);
+  const blockDraft = preflight.some((i) => i.level === "error" && !i.onlyPublish);
+  const blockPublish = preflight.some((i) => i.level === "error");
+
+  // Al abrir el formulario: ofrece recuperar una copia local que no llegó a guardarse.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(backupKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as FormBackup;
+      const tooOld = !parsed?.savedAt || Date.now() - parsed.savedAt > BACKUP_MAX_AGE_MS;
+      if (!parsed?.values || tooOld || JSON.stringify(parsed.values) === baselineRef.current) {
+        window.localStorage.removeItem(backupKey);
+        return;
+      }
+      setBackup(parsed);
+    } catch {
+      // Sin acceso al almacenamiento del navegador: el formulario funciona igual, solo sin copia local.
+    }
+  }, [backupKey]);
+
+  // Mientras se escribe: guarda una copia local cada pocos segundos (solo si hay cambios).
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (savedRef.current) return;
+      if (JSON.stringify(values) === baselineRef.current) return;
+      try {
+        const copy: FormBackup = { savedAt: Date.now(), values };
+        window.localStorage.setItem(backupKey, JSON.stringify(copy));
+      } catch {
+        // Si el navegador no deja guardar la copia, se sigue sin ella.
+      }
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [values, backupKey]);
+
+  // Avisa antes de cerrar o recargar la pestaña si hay cambios sin guardar.
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (savedRef.current) return;
+      if (JSON.stringify(valuesRef.current) === baselineRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // Cuando aparece un error de guardado, lleva la vista hasta él.
+  useEffect(() => {
+    if (saveError) saveErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [saveError]);
+
+  const restoreBackup = () => {
+    if (!backup) return;
+    setValues(backup.values);
+    setSlugTouched(true);
+    setEditorKey((k) => k + 1);
+    setBackup(null);
+  };
+
+  const discardBackup = () => {
+    try {
+      window.localStorage.removeItem(backupKey);
+    } catch {
+      // Nada que hacer si el navegador no permite borrarla.
+    }
+    setBackup(null);
+  };
+
   const setFaqItem = (index: number, field: keyof FaqItem, value: string) =>
     setValues((v) => ({
       ...v,
@@ -144,47 +318,59 @@ export function ArticleForm({
   const removeFaqItem = (index: number) =>
     setValues((v) => ({ ...v, faq: v.faq.filter((_, i) => i !== index) }));
 
-  const uploadImage = async (file: File): Promise<string | null> => {
-    setUploading(true);
-    setError("");
+  // Vercel rechaza cualquier pedido de más de ~4,5 MB antes de que llegue a nuestro código, así que se avisa antes.
+  const MAX_IMAGE_MB = 4;
+
+  const uploadImage = async (file: File, where: "cover" | "editor"): Promise<string | null> => {
+    setUploadsInFlight((n) => n + 1);
+    setUploadError(null);
     try {
+      if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+        throw new Error(
+          `La imagen pesa ${(file.size / (1024 * 1024)).toFixed(1)} MB y el máximo es ${MAX_IMAGE_MB} MB. Reduce su tamaño (por ejemplo, guardándola como JPG) y vuelve a pegarla.`
+        );
+      }
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al subir la imagen");
-      return data.url as string;
+      const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || `No se pudo subir la imagen (código ${res.status}).`);
+      }
+      return data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al subir la imagen");
+      setUploadError({
+        where,
+        message: err instanceof Error ? err.message : "Error al subir la imagen.",
+      });
       return null;
     } finally {
-      setUploading(false);
+      setUploadsInFlight((n) => n - 1);
     }
   };
 
   const onCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = await uploadImage(file);
+    const url = await uploadImage(file, "cover");
     if (url) set("coverImage", url);
     e.target.value = "";
   };
 
-  const isContentEmpty = (html: string) => {
-    const text = html.replace(/<[^>]*>/g, "").trim();
-    return text.length === 0;
-  };
-
   const onSubmit = async (e: FormEvent, publishOverride?: boolean) => {
     e.preventDefault();
-    if (isContentEmpty(values.content)) {
-      setError("El contenido del artículo no puede quedar vacío.");
+    const finalPublished = publishOverride ?? values.published;
+
+    // Si hay algo que el servidor rechazaría, se avisa acá mismo, junto a los botones.
+    const blocking = preflight.filter((i) => i.level === "error" && (finalPublished || !i.onlyPublish));
+    if (blocking.length > 0) {
+      setSaveError(`Falta corregir: ${blocking.map((i) => i.text).join(" ")}`);
       return;
     }
+
     setSaving(true);
-    setError("");
+    setSaveError("");
     try {
-      const finalPublished = publishOverride ?? values.published;
       const payload = {
         ...values,
         published: finalPublished,
@@ -193,17 +379,45 @@ export function ArticleForm({
       };
       const url = isEditing ? `/api/admin/articles/${initial!.id}` : "/api/admin/articles";
       const method = isEditing ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al guardar el artículo");
-      router.push("/admin");
+
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        throw new Error("No hubo conexión con el servidor. Revisa tu internet y vuelve a intentarlo.");
+      }
+
+      // Si el servidor responde algo que no es JSON (por ejemplo una página de error de Vercel), no se rompe.
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        article?: { id?: string };
+      } | null;
+
+      if (!res.ok) {
+        throw new Error(data?.error || `El servidor respondió con un error (código ${res.status}).`);
+      }
+      const savedId = data?.article?.id;
+      if (!savedId) {
+        throw new Error("El servidor no confirmó que el artículo se haya guardado.");
+      }
+
+      // Guardado confirmado: ya no hace falta la copia local ni el aviso de cambios sin guardar.
+      savedRef.current = true;
+      try {
+        window.localStorage.removeItem(backupKey);
+      } catch {
+        // Sin acceso al almacenamiento del navegador: no hay nada que borrar.
+      }
+      router.push(`/admin?guardado=${encodeURIComponent(savedId)}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      setSaveError(
+        `${err instanceof Error ? err.message : "Error al guardar."} El artículo NO se guardó, pero tu texto sigue en pantalla y tiene una copia en este navegador.`
+      );
     } finally {
       setSaving(false);
     }
@@ -214,10 +428,38 @@ export function ArticleForm({
   const labelClass = "mb-1.5 block font-ui text-xs uppercase tracking-wide text-gold-dim";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {error && (
-        <div className="rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright">
-          {error}
+    // Pulsar Enter dentro de un campo no debe guardar nada: solo guardan los botones de abajo.
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+      {backup && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 font-ui text-sm text-gold-pale"
+        >
+          <span className="flex-1">
+            Encontramos una copia de este artículo con cambios que no llegaron a guardarse (
+            {new Date(backup.savedAt).toLocaleString("es-AR", {
+              day: "numeric",
+              month: "long",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })}
+            ). ¿Quieres recuperarla?
+          </span>
+          <button
+            type="button"
+            onClick={restoreBackup}
+            className="focus-ring rounded-full bg-gold px-4 py-2 text-xs font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
+          >
+            Recuperar copia
+          </button>
+          <button
+            type="button"
+            onClick={discardBackup}
+            className="font-ui text-xs uppercase tracking-wide text-gold-dim underline hover:text-gold"
+          >
+            Descartar
+          </button>
         </div>
       )}
 
@@ -315,6 +557,12 @@ export function ArticleForm({
           </button>
           <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={onCoverFileChange} />
         </div>
+        {uploadError?.where === "cover" && (
+          <div role="alert" className="mt-3 rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright">
+            <strong className="font-medium">La imagen no se subió. </strong>
+            {uploadError.message}
+          </div>
+        )}
         {values.coverImage && (
           <div className="mt-4 space-y-3 rounded-lg border border-gold/20 bg-noir-surface2/40 p-4">
             <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">
@@ -408,7 +656,18 @@ export function ArticleForm({
 
       <div>
         <label className={labelClass} htmlFor="content">Contenido</label>
-        <RichTextEditor value={values.content} onChange={(html) => set("content", html)} onImageUpload={uploadImage} />
+        <RichTextEditor
+          key={editorKey}
+          value={values.content}
+          onChange={(html) => set("content", html)}
+          onImageUpload={(file) => uploadImage(file, "editor")}
+        />
+        {uploadError?.where === "editor" && (
+          <div role="alert" className="mt-3 rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright">
+            <strong className="font-medium">La imagen no se subió y no quedó en el texto. </strong>
+            {uploadError.message}
+          </div>
+        )}
       </div>
 
       <section aria-labelledby="seo-heading" className="space-y-6 rounded-lg border border-gold/25 bg-noir-surface2/30 p-5">
@@ -603,30 +862,92 @@ export function ArticleForm({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-gold/15 pt-6">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={(e) => onSubmit(e, false)}
-          className="focus-ring rounded-full border border-gold/40 px-6 py-3 font-ui text-sm uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
-        >
-          Guardar borrador
-        </button>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={(e) => onSubmit(e, true)}
-          className="focus-ring rounded-full bg-gold px-6 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-50"
-        >
-          {saving ? "Guardando…" : isFuture ? "Programar publicación" : "Publicar"}
-        </button>
-        {initial?.published && savedScheduled && savedDate && (
-          <span className="font-ui text-xs uppercase tracking-wide text-gold">
-            Programado para el {formatLocal(savedDate)}
-          </span>
+      <div className="space-y-4 border-t border-gold/15 pt-6">
+        {/* Revisión previa: lo que hay que corregir (rojo) y lo que conviene mirar (dorado), justo encima de los botones. */}
+        {preflight.length > 0 ? (
+          <div
+            role="status"
+            className={`rounded-lg border p-4 ${
+              blockPublish ? "border-wine/50 bg-wine/10" : "border-gold/30 bg-gold/10"
+            }`}
+          >
+            <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Antes de guardar o publicar</p>
+            <ul className="mt-2 space-y-1.5 font-ui text-sm">
+              {preflight.map((issue, index) => (
+                <li
+                  key={index}
+                  className={`flex items-start gap-2 ${issue.level === "error" ? "text-wine-bright" : "text-gold"}`}
+                >
+                  <span aria-hidden="true" className="mt-px shrink-0">
+                    {issue.level === "error" ? "✕" : "!"}
+                  </span>
+                  <span>
+                    <span className="sr-only">{issue.level === "error" ? "Corregir: " : "Aviso: "}</span>
+                    {issue.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {blockDraft && (
+              <p className="mt-3 font-ui text-xs text-gold-dim">
+                Mientras haya algo en rojo, los botones de guardar quedan desactivados.
+              </p>
+            )}
+            {!blockDraft && blockPublish && (
+              <p className="mt-3 font-ui text-xs text-gold-dim">
+                Puedes guardar el borrador, pero «Publicar / Programar» queda desactivado hasta corregir lo que está en rojo.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p role="status" className="font-ui text-xs uppercase tracking-wide text-green-400">
+            ✓ Todo en orden: el artículo se puede guardar y publicar.
+          </p>
         )}
-        {initial?.published && !savedScheduled && (
-          <span className="font-ui text-xs uppercase tracking-wide text-green-400">Este artículo está publicado</span>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            disabled={saving || blockDraft}
+            onClick={(e) => onSubmit(e, false)}
+            className="focus-ring rounded-full border border-gold/40 px-6 py-3 font-ui text-sm uppercase tracking-wide text-gold transition hover:bg-gold/10 disabled:opacity-50"
+          >
+            Guardar borrador
+          </button>
+          <button
+            type="button"
+            disabled={saving || blockPublish}
+            onClick={(e) => onSubmit(e, true)}
+            className="focus-ring rounded-full bg-gold px-6 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-50"
+          >
+            {saving ? "Guardando…" : isFuture ? "Programar publicación" : "Publicar"}
+          </button>
+          {initial?.published && savedScheduled && savedDate && (
+            <span className="font-ui text-xs uppercase tracking-wide text-gold">
+              Programado para el {formatLocal(savedDate)}
+            </span>
+          )}
+          {initial?.published && !savedScheduled && (
+            <span className="font-ui text-xs uppercase tracking-wide text-green-400">Este artículo está publicado</span>
+          )}
+        </div>
+
+        {initial?.published && (
+          <p className="font-ui text-xs text-gold-dim">
+            Ojo: este artículo ya está {savedScheduled ? "programado" : "publicado"}. «Guardar borrador» lo oculta del sitio
+            y borra su fecha.
+          </p>
+        )}
+
+        {saveError && (
+          <div
+            ref={saveErrorRef}
+            role="alert"
+            className="rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright"
+          >
+            <strong className="font-medium">No se guardó. </strong>
+            {saveError}
+          </div>
         )}
       </div>
     </form>
