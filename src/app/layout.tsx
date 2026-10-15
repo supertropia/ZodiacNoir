@@ -5,6 +5,10 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { CopyProtection } from "@/components/CopyProtection";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 
 const cinzel = Cinzel({ subsets: ["latin"], variable: "--font-cinzel", weight: ["400", "600", "700"] });
 const cormorant = Cormorant_Garamond({
@@ -42,10 +46,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Solo la cuenta de administración puede copiar texto y sacar capturas; el resto (miembros incluidos) no.
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email?.toLowerCase() ?? null;
+  const allowCopy = email === "zodiac.noir1@gmail.com" || isAdminEmail(email);
+
   return (
     <html lang="es" data-theme="day" data-fontsize="md" className={`${cinzel.variable} ${cormorant.variable} ${jost.variable}`}>
       <body className="bg-velvet min-h-screen font-body">
+        <CopyProtection allowCopy={allowCopy} />
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && (
           <Script
             async
