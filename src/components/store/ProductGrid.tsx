@@ -1,162 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AmazonPrice, ProductDetail } from "@/components/store/ProductDetail";
+import { toPlainText } from "@/components/store/FormattedText";
+import type { ProductViewModel } from "@/lib/store-products";
 
-type ContentHighlight = { title: string; description: string };
-type Testimonial = { name: string; stars: number; text: string; shared: number };
-
-function Carousel({
-  itemCount,
-  renderItem,
-  itemClassName = "w-full sm:w-1/2 lg:w-1/3",
-  autoPlayMs,
-}: {
-  itemCount: number;
-  renderItem: (index: number) => React.ReactNode;
-  itemClassName?: string;
-  // Si se pasa, el carrusel avanza solo cada tantos milisegundos (se pausa al pasar el mouse por encima).
-  autoPlayMs?: number;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [index, setIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
-
-  const scrollToIndex = (i: number) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const child = el.children[i] as HTMLElement | undefined;
-    if (child) el.scrollTo({ left: child.offsetLeft, behavior: "smooth" });
-  };
-
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const children = Array.from(el.children) as HTMLElement[];
-    let closest = 0;
-    let minDist = Infinity;
-    children.forEach((c, i) => {
-      const dist = Math.abs(c.offsetLeft - el.scrollLeft);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = i;
-      }
-    });
-    setIndex(closest);
-  };
-
-  // Avance automático: sólo si se pidió autoPlayMs, hay más de un elemento,
-  // y el usuario no tiene el mouse encima (así puede quedarse leyendo un comentario sin que se mueva).
-  useEffect(() => {
-    if (!autoPlayMs || itemCount < 2 || isHovered) return;
-    const timer = setInterval(() => {
-      setIndex((current) => {
-        const next = (current + 1) % itemCount;
-        scrollToIndex(next);
-        return next;
-      });
-    }, autoPlayMs);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlayMs, itemCount, isHovered]);
-
-  if (itemCount === 0) return null;
-
-  return (
-    <div
-      className="relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {Array.from({ length: itemCount }).map((_, i) => (
-          <div key={i} className={`shrink-0 snap-start ${itemClassName}`}>
-            {renderItem(i)}
-          </div>
-        ))}
-      </div>
-
-      {itemCount > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={() => scrollToIndex(Math.max(0, index - 1))}
-            aria-label="Anterior"
-            className="focus-ring absolute left-0 top-1/2 hidden h-8 w-8 -translate-x-3 -translate-y-1/2 items-center justify-center rounded-full border border-gold/30 bg-noir-bg/85 text-gold-pale hover:border-gold hover:text-gold sm:flex"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollToIndex(Math.min(itemCount - 1, index + 1))}
-            aria-label="Siguiente"
-            className="focus-ring absolute right-0 top-1/2 hidden h-8 w-8 -translate-y-1/2 translate-x-3 items-center justify-center rounded-full border border-gold/30 bg-noir-bg/85 text-gold-pale hover:border-gold hover:text-gold sm:flex"
-          >
-            ›
-          </button>
-          <div className="mt-3 flex justify-center gap-1.5">
-            {Array.from({ length: itemCount }).map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => scrollToIndex(i)}
-                aria-label={`Ir al elemento ${i + 1}`}
-                className={`h-1.5 w-1.5 rounded-full transition ${
-                  i === index ? "bg-gold" : "bg-gold/30"
-                }`}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// Muestra el precio de Amazon con "USD" pequeño y tenue al lado del monto.
-// Acepta cualquier formato guardado ("9,99", "$9.99", "USD 14,99") y lo normaliza.
-// Si el texto tiene otra moneda (por ejemplo €), se muestra tal cual, sin agregar USD.
-function AmazonPrice({ value }: { value: string }) {
-  const raw = value.trim();
-  if (/€|eur/i.test(raw)) return <span>{raw}</span>;
-  const amount = raw.replace(/us\$|usd/gi, "").replace(/\s+/g, "").trim();
-  const withSymbol = amount.startsWith("$") ? amount : `$${amount}`;
-  return (
-    <span className="whitespace-nowrap">
-      {withSymbol}
-      <span className="ml-1 text-[10px] font-normal tracking-wider opacity-70">USD</span>
-    </span>
-  );
-}
-
-export type ProductViewModel = {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  priceLabel: string;
-  priceArs: number | null;
-  amazonKindleUrl: string | null;
-  amazonKindlePrice: string | null;
-  amazonPaperbackUrl: string | null;
-  amazonPaperbackPrice: string | null;
-  coverImage: string | null;
-  coverImagePosition: number;
-  heroImage: string | null;
-  heroImagePosition: number;
-  galleryImages: string[];
-  contentHighlights: ContentHighlight[];
-  testimonials: Testimonial[];
-  audienceText: string | null;
-  salesCount: number | null;
-  owned: boolean;
-  fileUrl: string | null;
-  checkoutUrl: string | null;
-};
+export type { ProductViewModel } from "@/lib/store-products";
 
 export function ProductGrid({
   products,
@@ -165,23 +14,23 @@ export function ProductGrid({
   products: ProductViewModel[];
   initialProductSlug?: string;
 }) {
-  const [flipped, setFlipped] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
-  const [payingId, setPayingId] = useState<string | null>(null);
-  const [payError, setPayError] = useState("");
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const fichaRef = useRef<HTMLDivElement>(null);
   const detalleRef = useRef<HTMLDivElement>(null);
-  const touchStartXRef = useRef<number | null>(null);
+
+  const scrollToDetail = (delay: number) => {
+    // Esperamos un instante a que la ficha se monte/expanda antes de scrollear,
+    // así el usuario ve la descripción del producto de inmediato al tocar la tarjeta.
+    setTimeout(() => {
+      detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, delay);
+  };
 
   useEffect(() => {
     if (!initialProductSlug) return;
     const match = products.find((p) => p.slug === initialProductSlug);
     if (match) {
       setOpenId(match.id);
-      setTimeout(() => {
-        detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
+      scrollToDetail(100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProductSlug]);
@@ -191,524 +40,131 @@ export function ProductGrid({
     [products, openId]
   );
 
-  const toggleFlip = (id: string) => {
-    setFlipped((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
   const openLanding = (id: string) => {
     const willOpen = openId !== id;
     setOpenId((current) => (current === id ? null : id));
-    if (willOpen) {
-      // Esperamos un instante a que la ficha se monte/expanda antes de scrollear,
-      // así el usuario ve la descripción del producto de inmediato al tocar "+ info".
-      setTimeout(() => {
-        detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 120);
-    }
+    if (willOpen) scrollToDetail(120);
   };
 
-  const payWithMercadoPago = async (productId: string) => {
-    setPayingId(productId);
-    setPayError("");
-    try {
-      const res = await fetch("/api/mercadopago/create-preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo iniciar el pago.");
-      window.location.href = data.url;
-    } catch (err) {
-      setPayError(err instanceof Error ? err.message : "No se pudo iniciar el pago.");
-      setPayingId(null);
-    }
-  };
-
-  const shareUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/tienda` : "https://zodiacnoirweb.com/tienda";
-
-  const closeLightbox = () => setLightboxIndex(null);
-
-  const showPrevImage = () => {
-    if (!openProduct) return;
-    setLightboxIndex((i) =>
-      i === null ? null : (i - 1 + openProduct.galleryImages.length) % openProduct.galleryImages.length
-    );
-  };
-
-  const showNextImage = () => {
-    if (!openProduct) return;
-    setLightboxIndex((i) => (i === null ? null : (i + 1) % openProduct.galleryImages.length));
-  };
-
-  // Navegación del lightbox con flechas de teclado y tecla Escape (solo desktop;
-  // el swipe táctil se maneja directo en los eventos touchstart/touchend del modal)
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowLeft") showPrevImage();
-      if (e.key === "ArrowRight") showNextImage();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lightboxIndex, openProduct]);
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://zodiacnoirweb.com";
 
   return (
     <div>
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((product) => {
-          const isFlipped = flipped.has(product.id);
+          const isOpen = openId === product.id;
+          // Portada completa del libro: se prefiere la imagen alta (hero) y, si no existe, la de la tarjeta.
+          const stageImage = product.heroImage ?? product.coverImage;
+          const hasPdf = Boolean(product.priceArs) || product.owned;
           return (
-            <div key={product.id} className="[perspective:1400px]">
+            <li key={product.id} className="flex">
               <div
-                role="button"
-                tabIndex={0}
-                onClick={() => toggleFlip(product.id)}
-                onKeyDown={(e) => e.key === "Enter" && toggleFlip(product.id)}
-                className="relative min-h-[360px] w-full cursor-pointer [transform-style:preserve-3d] transition-transform duration-700"
-                style={{ transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+                className={`group relative flex w-full flex-col overflow-hidden rounded-2xl border bg-noir-bg transition duration-300 focus-within:ring-2 focus-within:ring-gold/50 hover:-translate-y-1 hover:border-gold/60 hover:shadow-[0_18px_40px_-18px_rgba(38,24,63,0.35)] ${
+                  isOpen ? "border-gold ring-2 ring-gold/40" : "border-gold/25"
+                }`}
               >
-                {/* Cara frontal */}
-                <div className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl border border-gold/20 bg-noir-surface/60 [backface-visibility:hidden]">
-                  <div className="relative h-36 flex-shrink-0 overflow-hidden bg-gradient-to-b from-noir-surface2 to-noir-bg">
-                    {product.coverImage && (
-                      <img
-                        src={product.coverImage}
-                        alt={product.title}
-                        className="h-full w-full object-cover"
-                        style={{ objectPosition: `center ${product.coverImagePosition}%` }}
-                      />
-                    )}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-noir-surface via-noir-surface/60 to-transparent" />
-                  </div>
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="font-display text-base font-semibold leading-snug text-gold-pale">
-                      {product.title}
-                    </h3>
-                    <p className="mt-2 flex-1 font-body text-base leading-snug text-gold-pale/75 [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden">
-                      {product.description}
-                    </p>
-                    <div className="mt-auto flex items-center justify-end pt-3">
-                      <span className="font-body text-sm italic text-gold-dim">+ info ↻</span>
-                    </div>
-                  </div>
+                {/* Escenario de la portada: fondo lila suave y la imagen completa, sin recortes ni degradados encima */}
+                <div className="flex aspect-[4/5] items-center justify-center bg-gradient-to-b from-noir-surface to-noir-surface2 p-5">
+                  {stageImage ? (
+                    <img
+                      src={stageImage}
+                      alt={product.coverImageAlt || `Portada del libro ${product.title}`}
+                      loading="lazy"
+                      decoding="async"
+                      className="max-h-full max-w-full rounded-lg object-contain shadow-[0_14px_30px_-10px_rgba(18,13,28,0.55)] ring-1 ring-gold/30 transition duration-500 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <span className="font-display text-5xl text-gold/50" aria-hidden="true">
+                      ✦
+                    </span>
+                  )}
                 </div>
 
-                {/* Cara trasera */}
-                <div
-                  className="absolute inset-0 flex flex-col justify-center gap-3 rounded-2xl border border-gold/20 bg-noir-surface2 p-6 text-center [backface-visibility:hidden]"
-                  style={{ transform: "rotateY(180deg)" }}
-                >
-                  <h4 className="font-display text-sm tracking-wide text-gold-bright">Lo que incluye</h4>
-                  <ul className="space-y-2 text-left font-body text-base text-gold-pale/80">
-                    {product.contentHighlights.slice(0, 3).map((h, i) => (
-                      <li key={i}>
-                        <span className="text-gold-dim">✦ </span>
-                        {h.title}
+                <div className="flex flex-1 flex-col border-t border-gold/20 p-5">
+                  <ul className="mb-3 flex flex-wrap gap-1.5 font-ui text-[11px] uppercase tracking-wide">
+                    {product.owned && (
+                      <li className="rounded-full bg-gold px-2.5 py-1 font-medium text-noir-bg">Ya lo tienes</li>
+                    )}
+                    {hasPdf && (
+                      <li className="rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-gold-pale">PDF</li>
+                    )}
+                    {product.amazonKindleUrl && (
+                      <li className="rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-gold-pale">Kindle</li>
+                    )}
+                    {product.amazonPaperbackUrl && (
+                      <li className="rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-gold-pale">
+                        Libro físico
                       </li>
-                    ))}
+                    )}
                   </ul>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openLanding(product.id);
-                    }}
-                    className="focus-ring mx-auto mt-2 rounded-full border border-gold-dim px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold-bright transition hover:bg-gold hover:text-noir-bg"
-                  >
-                    + info
-                  </button>
+
+                  <h3 className="font-display text-lg font-semibold leading-snug text-gold-pale">
+                    {/* El botón se estira sobre toda la tarjeta: un clic en cualquier parte abre la ficha,
+                        y el título sigue siendo un encabezado real para buscadores y lectores de pantalla. */}
+                    <button
+                      type="button"
+                      onClick={() => openLanding(product.id)}
+                      aria-expanded={isOpen}
+                      aria-controls="ficha-producto"
+                      className="focus-ring text-left after:absolute after:inset-0 after:rounded-2xl"
+                    >
+                      {product.title}
+                    </button>
+                  </h3>
+
+                  <p className="mt-2 flex-1 font-body text-base leading-snug text-gold-pale/80 [-webkit-box-orient:vertical] [-webkit-line-clamp:3] [display:-webkit-box] overflow-hidden">
+                    {toPlainText(product.description)}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-gold/15 pt-3">
+                    <span className="font-ui text-sm font-medium text-gold-pale">
+                      {product.priceArs ? (
+                        `ARS ${product.priceArs.toLocaleString("es-AR")}`
+                      ) : product.amazonKindlePrice ? (
+                        <AmazonPrice value={product.amazonKindlePrice} />
+                      ) : (
+                        ""
+                      )}
+                    </span>
+                    <span className="font-ui text-xs uppercase tracking-wide text-gold-pale transition group-hover:text-gold">
+                      {isOpen ? "Ver ficha ↓" : "Ver descripción →"}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {/* Ficha completa compartida */}
       <div
-        ref={fichaRef}
-        className={`grid scroll-mt-36 overflow-hidden rounded-2xl border border-gold/20 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 sm:scroll-mt-24 ${
+        id="ficha-producto"
+        role="region"
+        aria-label={openProduct ? `Ficha de ${openProduct.title}` : "Ficha del libro"}
+        className={`grid scroll-mt-36 overflow-hidden rounded-2xl border border-gold/25 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 sm:scroll-mt-24 ${
           openProduct ? "mt-9 grid-rows-[1fr]" : "mt-0 grid-rows-[0fr] border-transparent"
         }`}
       >
         <div className="min-h-0 overflow-hidden">
           {openProduct && (
             <div className="p-6 sm:p-10">
-              <button
-                type="button"
-                onClick={() => setOpenId(null)}
-                className="float-right font-body text-sm italic text-gold-dim hover:text-gold-bright"
-              >
-                cerrar ficha ✕
-              </button>
-
-              <div className="grid gap-6 clear-both sm:grid-cols-[1.1fr_1fr] sm:gap-9">
-                <div className="min-h-[220px] overflow-hidden rounded-xl bg-gradient-to-br from-noir-surface2 to-noir-bg">
-                  {openProduct.heroImage && (
-                    <img
-                      src={openProduct.heroImage}
-                      alt={openProduct.title}
-                      onLoad={() => {
-                        // La imagen de portada es alta y tarda en cargar; una vez que carga,
-                        // la ficha crece y el título se corre hacia abajo. Recalculamos el
-                        // scroll acá para que el título y los botones de compra queden visibles.
-                        detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
-                      className="h-full w-full object-cover"
-                      style={{ objectPosition: `center ${openProduct.heroImagePosition}%` }}
-                    />
-                  )}
-                </div>
-                <div ref={detalleRef} className="scroll-mt-36 sm:scroll-mt-24">
-                  <h2 className="font-display text-2xl leading-tight text-gold-pale">{openProduct.title}</h2>
-                  <p className="mt-3 font-body text-lg leading-relaxed text-gold-pale/80">
-                    {openProduct.description}
-                  </p>
-
-                  {payError && (
-                    <p className="mt-4 font-ui text-sm text-wine-bright">{payError}</p>
-                  )}
-
-                  <div className="mt-6 grid items-stretch gap-3 sm:grid-cols-2">
-                    {(openProduct.owned || openProduct.priceArs) && (
-                      <div className="flex h-full flex-col rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
-                        <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">
-                          PDF digital · descarga inmediata
-                        </p>
-                        <p className="mt-0.5 font-ui text-[11px] text-gold-dim">Mercado Pago · válido para LATAM</p>
-                        <p className="mt-1 flex items-center gap-1 font-ui text-[11px] text-sky-400">
-                          <svg
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="h-3.5 w-3.5 shrink-0"
-                            aria-hidden="true"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Compra segura
-                        </p>
-
-                        <div className="mt-auto pt-3">
-                          {openProduct.owned && openProduct.fileUrl ? (
-                            <a href={openProduct.fileUrl}
-                              className="focus-ring block w-full rounded-full bg-gold px-5 py-2.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-                            >
-                              Descargar PDF
-                            </a>
-                          ) : (
-                            <>
-                              <p className="mb-2 font-ui text-lg font-medium text-gold-bright">
-                                ARS {openProduct.priceArs?.toLocaleString("es-AR")}
-                              </p>
-                              <button
-                                type="button"
-                                disabled={payingId === openProduct.id}
-                                onClick={() => payWithMercadoPago(openProduct.id)}
-                                className="focus-ring w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
-                              >
-                                {payingId === openProduct.id ? "Redirigiendo…" : "Adquirir"}
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {(openProduct.amazonKindleUrl || openProduct.amazonPaperbackUrl) && (
-                      <div className="flex h-full flex-col rounded-xl border border-gold/20 bg-noir-surface2/50 p-4">
-                        <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Adquirir en Amazon</p>
-                        <p className="mt-0.5 font-ui text-[11px] text-gold-dim">
-                          Envío y entrega dependen exclusivamente de Amazon según tu ubicación.
-                        </p>
-                        <p className="mt-1 flex items-center gap-1 font-ui text-[11px] text-sky-400">
-                          <svg
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="h-3.5 w-3.5 shrink-0"
-                            aria-hidden="true"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Compra segura
-                        </p>
-                        <div className="mt-auto space-y-2 pt-3">
-                          {openProduct.amazonKindleUrl && (
-                            <div>
-                              <a target="_blank"
-                                rel="noreferrer"
-                                href={openProduct.amazonKindleUrl}
-                                className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-                              >
-                                <span>Kindle (digital)</span>
-                                {openProduct.amazonKindlePrice && <AmazonPrice value={openProduct.amazonKindlePrice} />}
-                              </a>
-                              <p className="mt-1.5 text-center font-ui text-[11px] tracking-wide text-gold-dim">
-                                Disponible en <span className="text-gold">Kindle Unlimited</span>
-                              </p>
-                            </div>
-                          )}
-                          {openProduct.amazonPaperbackUrl && (
-                            <a target="_blank"
-                              rel="noreferrer"
-                              href={openProduct.amazonPaperbackUrl}
-                              className="focus-ring flex items-center justify-between rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright"
-                            >
-                              <span>Libro físico</span>
-                              {openProduct.amazonPaperbackPrice && <AmazonPrice value={openProduct.amazonPaperbackPrice} />}
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {!openProduct.owned && !openProduct.priceArs &&
-                      !openProduct.amazonKindleUrl && !openProduct.amazonPaperbackUrl && (
-                      <p className="font-ui text-xs text-gold-dim sm:col-span-2">
-                        Este producto todavía no tiene una forma de pago configurada.
-                      </p>
-                    )}
-
-                    {typeof openProduct.salesCount === "number" && openProduct.salesCount > 0 && (
-                      <div className="rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-center sm:col-span-2">
-                        <span className="font-ui text-sm uppercase tracking-wide text-gold-bright">
-                          {openProduct.salesCount.toLocaleString("es-AR")} {openProduct.salesCount === 1 ? "persona ya lo compró" : "personas ya lo compraron"}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-center sm:col-span-2">
-                      <p className="font-ui text-sm uppercase tracking-wide text-gold-bright">
-                        ¿Ya adquiriste nuestros libros? ¡Envianos tu reseña!
-                      </p>
-                      <Link
-                        href="/contacto"
-                        className="focus-ring mt-2 inline-block rounded-full border border-gold/40 px-4 py-1.5 font-ui text-xs uppercase tracking-wide text-gold transition hover:bg-gold/10"
-                      >
-                        Enviar reseña por correo
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {openProduct.audienceText && (
-                <div className="mt-8">
-                  <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
-                    Para quién es esto
-                  </h4>
-                  <p className="font-body text-lg italic leading-relaxed text-gold-pale/85">
-                    {openProduct.audienceText}
-                  </p>
-                </div>
-              )}
-
-              {openProduct.testimonials.length > 0 && (
-                <div className="mt-8">
-                  <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
-                    Lo que dicen quienes ya lo leyeron
-                  </h4>
-                  <Carousel
-                    itemCount={openProduct.testimonials.length}
-                    itemClassName="w-[85%] sm:w-1/2 lg:w-1/3"
-                    autoPlayMs={5000}
-                    renderItem={(i) => {
-                      const t = openProduct.testimonials[i];
-                      return (
-                        <div className="flex h-full flex-col justify-between rounded-xl border border-gold/15 bg-noir-surface2 p-5 transition hover:-translate-y-0.5 hover:border-gold/40">
-                          <div>
-                            <div className="mb-3 flex gap-0.5" aria-label={`${t.stars} de 5 estrellas`}>
-                              {Array.from({ length: 5 }).map((_, s) => (
-                                <span
-                                  key={s}
-                                  className={s < t.stars ? "text-sky-400" : "text-sky-400/25"}
-                                >
-                                  ★
-                                </span>
-                              ))}
-                            </div>
-                            <p className="font-body text-base italic leading-relaxed text-gold-pale/85">
-                              &ldquo;{t.text}&rdquo;
-                            </p>
-                          </div>
-                          <span className="mt-4 block font-ui text-sm italic text-gold-bright">
-                            {t.name}
-                          </span>
-                        </div>
-                      );
-                    }}
-                  />
-                </div>
-              )}
-
-              {openProduct.contentHighlights.length > 0 && (
-                <div className="mt-8">
-                  <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
-                    Qué vas a recibir
-                  </h4>
-                  <Carousel
-                    itemCount={openProduct.contentHighlights.length}
-                    itemClassName="w-[85%] sm:w-1/2 lg:w-1/3"
-                    renderItem={(i) => {
-                      const h = openProduct.contentHighlights[i];
-                      return (
-                        <div className="h-full rounded-lg border border-gold/15 p-4 transition hover:-translate-y-0.5 hover:border-gold/50 hover:bg-gold/5">
-                          <b className="mb-1 block font-display text-sm text-gold-pale">{h.title}</b>
-                          <span className="font-body text-base text-gold-pale/75">{h.description}</span>
-                        </div>
-                      );
-                    }}
-                  />
-                </div>
-              )}
-
-              {openProduct.galleryImages.length > 0 && (
-                <div className="mt-8">
-                  <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">
-                    Un vistazo por dentro
-                  </h4>
-                  <Carousel
-                    itemCount={openProduct.galleryImages.length}
-                    itemClassName="w-[55%] sm:w-1/3 lg:w-1/4"
-                    renderItem={(i) => (
-                      <button
-                        type="button"
-                        onClick={() => setLightboxIndex(i)}
-                        className="focus-ring block aspect-[3/4] w-full overflow-hidden rounded-lg border border-gold/15 transition hover:scale-[1.03]"
-                        aria-label="Ampliar imagen"
-                      >
-                        <img
-                          src={openProduct.galleryImages[i]}
-                          alt={`Página interior ${i + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </button>
-                    )}
-                  />
-                </div>
-              )}
-
-              <div className="mt-8">
-                <h4 className="mb-3 font-display text-sm uppercase tracking-wide text-gold-bright">Compartir</h4>
-                <div className="flex flex-wrap gap-2.5">
-                  <a target="_blank"
-                    rel="noreferrer"
-                    href={`https://wa.me/?text=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}%20${encodeURIComponent(shareUrl)}`}
-                    className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
-                  >
-                    WhatsApp
-                  </a>
-                  <a target="_blank"
-                    rel="noreferrer"
-                    href="https://www.instagram.com/"
-                    className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
-                  >
-                    Instagram
-                  </a>
-                  <a target="_blank"
-                    rel="noreferrer"
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&url=${encodeURIComponent(shareUrl)}`}
-                    className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
-                  >
-                    X
-                  </a>
-                  <a href={`mailto:?subject=${encodeURIComponent(openProduct.title + " — Zodiac Noir")}&body=${encodeURIComponent(shareUrl)}`}
-                    className="rounded-full border border-gold/25 bg-white/[0.02] px-4 py-2 font-ui text-sm text-gold-pale transition hover:border-gold hover:text-gold-bright"
-                  >
-                    Correo
-                  </a>
-                </div>
-              </div>
-
+              <ProductDetail
+                key={openProduct.id}
+                product={openProduct}
+                titleAs="h2"
+                shareUrl={`${origin}/tienda/${openProduct.slug}`}
+                pageHref={`/tienda/${openProduct.slug}`}
+                onClose={() => setOpenId(null)}
+                // La portada es alta y tarda en cargar; una vez que carga, la ficha crece y el título
+                // se corre hacia abajo. Recalculamos el scroll para que el título y los botones queden visibles.
+                onHeroLoad={() => scrollToDetail(0)}
+                detailRef={detalleRef}
+              />
             </div>
           )}
         </div>
       </div>
-
-      {/* Vista ampliada de una captura, con navegación por flechas y swipe táctil */}
-      {lightboxIndex !== null && openProduct && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-noir-bg/95 p-4 sm:p-10"
-          onClick={closeLightbox}
-          onTouchStart={(e) => {
-            touchStartXRef.current = e.touches[0].clientX;
-          }}
-          onTouchEnd={(e) => {
-            if (touchStartXRef.current === null) return;
-            const diff = e.changedTouches[0].clientX - touchStartXRef.current;
-            // Umbral de 50px para no confundir un toque suelto con un swipe intencional
-            if (Math.abs(diff) > 50) {
-              diff > 0 ? showPrevImage() : showNextImage();
-            }
-            touchStartXRef.current = null;
-          }}
-        >
-          <button
-            type="button"
-            onClick={closeLightbox}
-            aria-label="Cerrar"
-            className="focus-ring absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-gold/40 text-xl text-gold-pale hover:border-gold hover:text-gold sm:right-8 sm:top-8"
-          >
-            ✕
-          </button>
-
-          {openProduct.galleryImages.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                showPrevImage();
-              }}
-              aria-label="Imagen anterior"
-              className="focus-ring absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-gold/40 bg-noir-bg/70 text-xl text-gold-pale hover:border-gold hover:text-gold sm:left-6"
-            >
-              ‹
-            </button>
-          )}
-
-          <img
-            src={openProduct.galleryImages[lightboxIndex]}
-            alt={`Página interior ${lightboxIndex + 1}`}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-full max-w-full rounded-lg object-contain shadow-[0_0_60px_rgba(0,0,0,0.6)]"
-          />
-
-          {openProduct.galleryImages.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                showNextImage();
-              }}
-              aria-label="Imagen siguiente"
-              className="focus-ring absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-gold/40 bg-noir-bg/70 text-xl text-gold-pale hover:border-gold hover:text-gold sm:right-6"
-            >
-              ›
-            </button>
-          )}
-
-          {openProduct.galleryImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-gold/30 bg-noir-bg/70 px-3 py-1 font-ui text-xs text-gold-pale sm:bottom-8">
-              {lightboxIndex + 1} / {openProduct.galleryImages.length}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
