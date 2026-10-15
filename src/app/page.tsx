@@ -41,30 +41,33 @@ export default async function HomePage() {
               Lunaciones, eclipses y aspectos planetarios explicados por astrólogos y tarotistas
               en ejercicio — sin fórmulas genéricas ni horóscopos de relleno.
             </p>
-            <div className="mt-9 flex flex-wrap gap-4">
+            {/* Orden por importancia: tienda, artículos, membresía y, al final, efemérides.
+                En celular los botones ocupan todo el ancho (mismo tamaño, fáciles de tocar);
+                en pantallas más grandes forman una grilla de 2 x 2 prolija. */}
+            <div className="mt-9 grid gap-3 sm:max-w-xl sm:grid-cols-2">
+              <Link
+                href="/tienda"
+                className="focus-ring rounded-full bg-gold px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
+              >
+                Tienda de e-books
+              </Link>
               <Link
                 href="/articulos"
-                className="focus-ring rounded-full bg-gold px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
               >
                 Explorar artículos
               </Link>
               <Link
+                href="/membresia"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Súmate a la membresía
+              </Link>
+              <Link
                 href="/efemerides"
-                className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
               >
                 Ver efemérides
-              </Link>
-              <Link
-                href="/tienda"
-                className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
-              >
-                Ver tienda
-              </Link>
-              <Link
-                href="/membresia"
-                className="focus-ring rounded-full border border-gold/40 px-7 py-3 font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
-              >
-                Sumate a la membresía
               </Link>
             </div>
           </div>
