@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { parseFaq } from "@/lib/seo";
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
   const product = await prisma.product.findUnique({ where: { id: params.id } });
@@ -21,6 +22,12 @@ export default async function EditProductPage({ params }: { params: { id: string
     contentHighlights: (product.contentHighlights ?? []) as { title: string; description: string }[],
     testimonials: (product.testimonials ?? []) as { name: string; stars: number; text: string; shared: number }[],
     salesCount: product.salesCount ?? null,
+    metaTitle: product.metaTitle ?? "",
+    metaDescription: product.metaDescription ?? "",
+    focusKeyword: product.focusKeyword ?? "",
+    coverImageAlt: product.coverImageAlt ?? "",
+    tags: product.tags.join(", "),
+    faq: parseFaq(product.faq),
   };
 
   return (
