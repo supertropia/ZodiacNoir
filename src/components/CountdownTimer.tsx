@@ -33,9 +33,11 @@ export function CountdownTimer({ targetIso }: { targetIso: string }) {
   ];
 
   return (
-    <div className="flex gap-3">
+    // Grilla de 4 columnas iguales: las cajas se reparten el ancho disponible y nunca se salen de la tarjeta
+    // (antes tenían un ancho mínimo fijo y en celulares angostos la última caja se desbordaba).
+    <div className="grid grid-cols-4 gap-2 sm:gap-3">
       {cells.map((c) => (
-        <div key={c.label} className="flex flex-col items-center rounded-lg border border-gold/25 bg-noir-bg/40 px-3 py-2 min-w-[3.5rem]">
+        <div key={c.label} className="flex min-w-0 flex-col items-center rounded-lg border border-gold/25 bg-noir-bg/40 px-1 py-2 sm:px-3">
           <span className="font-display text-xl text-gold tabular-nums">{String(c.value).padStart(2, "0")}</span>
           <span className="font-ui text-[10px] uppercase tracking-wide text-gold-dim">{c.label}</span>
         </div>
