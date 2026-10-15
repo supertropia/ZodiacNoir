@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeQuery } from "@/lib/prisma";
 import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
 
@@ -13,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/articulos`, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/signos`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${siteUrl}/efemerides`, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${siteUrl}/tienda`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${siteUrl}/tienda`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${siteUrl}/membresia`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${siteUrl}/sobre-nosotros`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${siteUrl}/contacto`, changeFrequency: "yearly", priority: 0.3 },
@@ -40,5 +40,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...signPages, ...articlePages];
+  // Una página propia por cada libro publicado de la tienda.
+  const products = await safeQuery(() =>
+    prisma.product.findMany({
+      where: { published: true },
+      select: { slug: true },
+      orderBy: { createdAt: "desc" },
+    })
+  );
+
+  const productPages: MetadataRoute.Sitemap = products.map((product) => ({
+    url: `${siteUrl}/tienda/${product.slug}`,
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
+
+  return [...staticPages, ...signPages, ...articlePages, ...productPages];
 }
