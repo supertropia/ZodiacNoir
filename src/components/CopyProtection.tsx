@@ -8,6 +8,10 @@ import { useEffect } from "react";
  *
  * Importante: en una web no existe forma de bloquear de verdad una captura de pantalla
  * (el sistema operativo la hace por fuera del navegador). Esto sirve para frenar el uso casual.
+ *
+ * A propósito NO se difumina la página cuando la ventana pierde el foco: al hacer clic en un
+ * anuncio de AdSense (un iframe) el foco cambia, y alterar la vista de los anuncios va contra
+ * las políticas de Google.
  */
 const CSS = `
 html:not([data-copy-ok]) body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -77,10 +81,6 @@ export function CopyProtection({ allowCopy }: { allowCopy: boolean }) {
         window.setTimeout(() => root.removeAttribute("data-zn-hide"), 1200);
       }
     };
-    // Al perder el foco (herramientas de recorte, grabadores de pantalla) el contenido se difumina.
-    const hide = () => root.setAttribute("data-zn-hide", "1");
-    const show = () => root.removeAttribute("data-zn-hide");
-    const onVisibility = () => (document.hidden ? hide() : show());
 
     document.addEventListener("copy", onCopy);
     document.addEventListener("cut", onCopy);
@@ -89,9 +89,6 @@ export function CopyProtection({ allowCopy }: { allowCopy: boolean }) {
     document.addEventListener("selectstart", block);
     document.addEventListener("keydown", onKeyDown, true);
     document.addEventListener("keyup", onKeyUp, true);
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", hide);
-    window.addEventListener("focus", show);
 
     return () => {
       document.removeEventListener("copy", onCopy);
@@ -101,10 +98,7 @@ export function CopyProtection({ allowCopy }: { allowCopy: boolean }) {
       document.removeEventListener("selectstart", block);
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("keyup", onKeyUp, true);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", hide);
-      window.removeEventListener("focus", show);
-      show();
+      root.removeAttribute("data-zn-hide");
     };
   }, [allowCopy]);
 
