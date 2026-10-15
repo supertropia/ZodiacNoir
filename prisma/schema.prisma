@@ -123,6 +123,19 @@ model Product {
   // Se carga a mano desde el admin, no se calcula solo a partir de las compras reales.
   salesCount           Int?
   fileUrl              String?
+  // --- SEO (todos opcionales: si están vacíos, la web usa el título y la descripción del producto) ---
+  // Título que aparece en Google y en la pestaña del navegador (ideal: hasta ~60 caracteres).
+  metaTitle            String?
+  // Descripción que aparece bajo el título en Google (ideal: 120 a 155 caracteres).
+  metaDescription      String?
+  // Palabra clave principal; solo se usa para la lista de control del panel de admin.
+  focusKeyword         String?
+  // Texto alternativo de la portada (lo leen Google y los lectores de pantalla).
+  coverImageAlt        String?
+  // Etiquetas del producto (se publican como "keywords" en los datos estructurados).
+  tags                 String[]   @default([])
+  // Preguntas frecuentes: lista de { question, answer }. Se muestran en la página del producto y alimentan el schema FAQPage.
+  faq                  Json       @default("[]")
   published            Boolean    @default(true)
   createdAt            DateTime   @default(now())
   purchases            Purchase[]
@@ -192,5 +205,19 @@ model ArticleView {
   views     Int     @default(0)
 
   @@unique([articleId, day])
+  @@index([day])
+}
+
+// Vistas de la tienda, un número por destino y por día (sin datos personales).
+// target = "tienda" (la página /tienda) o "producto:<id>" (la ficha de un libro).
+// Se suma desde /api/store-views y se lee en /admin/productos.
+model StoreView {
+  id     String @id @default(cuid())
+  target String
+  // Día en horario de Argentina, formato AAAA-MM-DD
+  day    String
+  views  Int    @default(0)
+
+  @@unique([target, day])
   @@index([day])
 }
