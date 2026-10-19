@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasActiveMembership } from "@/lib/membership";
 import { CancelMembershipButton } from "@/components/membership/CancelMembershipButton";
 
 export const metadata = { title: "Mi cuenta" };
@@ -29,6 +30,10 @@ export default async function MiCuentaPage() {
       </div>
     );
   }
+
+  // Si la suscripción quedó "pendiente", esto le consulta a Mercado Pago su estado real y
+  // la activa en el momento (así no dependemos solo de que llegue el aviso del pago).
+  await hasActiveMembership(email);
 
   const [subscription, purchases] = await Promise.all([
     prisma.subscription.findUnique({ where: { email }, include: { plan: true } }),
@@ -86,7 +91,18 @@ export default async function MiCuentaPage() {
           </div>
         ) : (
           <div className="mt-4">
-            <p className="font-ui text-sm text-gold-pale/85">Todavía no sos miembro de Zodiac Noir Plus.</p>
+            {subscription?.status === "pending" ? (
+              <p className="font-ui text-sm text-gold-pale/85">
+                Tu suscripción está pendiente de confirmación en Mercado Pago. Si ya completaste el pago,
+                esperá unos minutos y recargá esta página. Si pasa un rato y sigue igual, escribinos desde{" "}
+                <Link href="/contacto" className="text-gold underline">
+                  contacto
+                </Link>
+                .
+              </p>
+            ) : (
+              <p className="font-ui text-sm text-gold-pale/85">Todavía no sos miembro de Zodiac Noir Plus.</p>
+            )}
             <Link
               href="/membresia"
               className="focus-ring mt-4 inline-block rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
