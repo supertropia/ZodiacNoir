@@ -6,19 +6,18 @@ import { createSubscription } from "@/lib/mercadopago";
 
 export const dynamic = "force-dynamic";
 
+const ACTIVE_STATUSES = ["active", "on_trial"];
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     const payerEmail = session?.user?.email;
     if (!payerEmail) {
-      return NextResponse.json(
-        { error: "Iniciá sesión con Google para suscribirte." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Iniciá sesión para suscribirte." }, { status: 401 });
     }
 
     const { planId } = await req.json();
-    if (!planId) {
+    if (!planId || typeof planId !== "string") {
       return NextResponse.json({ error: "Falta planId." }, { status: 400 });
     }
 
@@ -33,6 +32,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // Si ya es miembro, no creamos otra suscripción (evita cobrarle dos veces).
+    const existing = await prisma.subscription.findUnique({ where: { email: payerEmail } });
+    if (existing && ACTIVE_STATUSES.includes(existing.status)) {
+      return NextResponse.json({ error: "Ya sos miembro de Zodiac Noir Plus." }, { status: 400 });
+    }
+
     const frequency = plan.interval === "año" ? 12 : 1;
 
     const subscription = await createSubscription({
@@ -41,6 +46,29 @@ export async function POST(req: Request) {
       priceArs: plan.priceArs,
       frequency,
       payerEmail,
+    });
+
+    // CLAVE: guardamos YA la suscripción como "pending", asociada al email con el que la
+    // persona inició sesión en la web y al ID que le asignó Mercado Pago. Así, cuando
+    // Mercado Pago avise (o cuando la web le consulte el estado), sabemos exactamente a
+    // qué cuenta pertenece, aunque la persona pague con otra cuenta o con otro email.
+    await prisma.subscription.upsert({
+      where: { email: payerEmail },
+      update: {
+        provider: "mercadopago",
+        status: "pending",
+        mercadoPagoPreapprovalId: String(subscription.id),
+        planId: plan.id,
+        renewsAt: null,
+        endsAt: null,
+      },
+      create: {
+        email: payerEmail,
+        provider: "mercadopago",
+        status: "pending",
+        mercadoPagoPreapprovalId: String(subscription.id),
+        planId: plan.id,
+      },
     });
 
     return NextResponse.json({ url: subscription.initPoint });
