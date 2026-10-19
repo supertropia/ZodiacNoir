@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPayment, getPreapproval } from "@/lib/mercadopago";
+import { mapPreapprovalStatus } from "@/lib/membership";
 
 export const runtime = "nodejs";
 
@@ -81,36 +82,51 @@ async function handlePaymentNotification(paymentId: string) {
   }
 }
 
-// Unifica el status de Mercado Pago con los mismos valores que ya usa Lemon Squeezy
-// en hasActiveMembership() ("active" habilita el acceso premium).
-function mapPreapprovalStatus(status: string): string {
-  if (status === "authorized") return "active";
-  return status; // "pending" | "paused" | "cancelled"
-}
-
 // Alta/cambio de estado de una membresía (Suscripciones / Preapproval).
+// Primero buscamos la suscripción por su ID de Mercado Pago (la guardamos como "pending"
+// al crearla, junto con el email de la cuenta de la web). Así queda asociada a la cuenta
+// correcta aunque la persona haya pagado con otro email en Mercado Pago. Si no la
+// conocemos (suscripciones creadas antes de este cambio), usamos el email del pagador.
 async function handlePreapprovalNotification(preapprovalId: string) {
   try {
     const preapproval = await getPreapproval(preapprovalId);
     const email = preapproval.payer_email;
     const planId = preapproval.external_reference || undefined;
+    const status = mapPreapprovalStatus(preapproval.status);
+    const renewsAt = preapproval.next_payment_date ? new Date(preapproval.next_payment_date) : null;
 
-    if (email) {
+    console.log("Webhook de suscripción:", String(preapproval.id), preapproval.status, "->", status);
+
+    const known = await prisma.subscription.findUnique({
+      where: { mercadoPagoPreapprovalId: String(preapproval.id) },
+    });
+
+    if (known) {
+      await prisma.subscription.update({
+        where: { id: known.id },
+        data: {
+          provider: "mercadopago",
+          status,
+          renewsAt: renewsAt ?? known.renewsAt,
+          endsAt: status === "cancelled" ? known.endsAt ?? new Date() : null,
+        },
+      });
+    } else if (email) {
       await prisma.subscription.upsert({
         where: { email },
         update: {
           provider: "mercadopago",
-          status: mapPreapprovalStatus(preapproval.status),
+          status,
           mercadoPagoPreapprovalId: String(preapproval.id),
-          renewsAt: preapproval.next_payment_date ? new Date(preapproval.next_payment_date) : null,
+          renewsAt,
           planId,
         },
         create: {
           email,
           provider: "mercadopago",
           mercadoPagoPreapprovalId: String(preapproval.id),
-          status: mapPreapprovalStatus(preapproval.status),
-          renewsAt: preapproval.next_payment_date ? new Date(preapproval.next_payment_date) : null,
+          status,
+          renewsAt,
           planId,
         },
       });
@@ -129,8 +145,22 @@ async function handlePreapprovalNotification(preapprovalId: string) {
 // Documentación: https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/additional-content/notifications/webhooks
 async function handleNotification(req: Request) {
   const url = new URL(req.url);
-  const type = url.searchParams.get("type") ?? url.searchParams.get("topic");
-  const resourceId = url.searchParams.get("data.id") ?? url.searchParams.get("id");
+  let type = url.searchParams.get("type") ?? url.searchParams.get("topic");
+  let resourceId = url.searchParams.get("data.id") ?? url.searchParams.get("id");
+
+  // Algunos avisos (sobre todo los de Suscripciones) llegan con los datos en el cuerpo JSON
+  // y no en la URL. Si no los encontramos arriba, los buscamos ahí.
+  if ((!type || !resourceId) && req.method === "POST") {
+    try {
+      const body = await req.json();
+      type = type ?? body?.type ?? body?.topic ?? null;
+      resourceId = resourceId ?? (body?.data?.id != null ? String(body.data.id) : null);
+    } catch {
+      // Cuerpo vacío o que no es JSON: seguimos con lo que haya.
+    }
+  }
+
+  console.log("Webhook de Mercado Pago recibido:", type, resourceId);
 
   if (!resourceId) {
     return NextResponse.json({ ok: true, skipped: true });
