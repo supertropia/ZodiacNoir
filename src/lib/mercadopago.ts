@@ -142,14 +142,32 @@ export async function createSubscription({
     status: "pending",
   };
 
-  const res = await fetch(`${MP_API_BASE}/preapproval`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const send = (payload: Record<string, unknown>) =>
+    fetch(`${MP_API_BASE}/preapproval`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+  // Para las Suscripciones, Mercado Pago NO usa la URL de avisos que se configura en el
+  // panel de "Tus integraciones": hay que indicarla al crear cada suscripción. Se la
+  // mandamos acá. Si Mercado Pago la rechazara por algún motivo, reintentamos sin ella
+  // para que el checkout nunca deje de funcionar (la web igual verifica el estado de la
+  // suscripción por su cuenta, ver syncPendingMercadoPagoSubscription en membership.ts).
+  let res = await send({ ...body, notification_url: `${siteUrl}/api/mercadopago/webhook` });
+
+  if (!res.ok) {
+    const firstError = await res.text();
+    console.error(
+      "Mercado Pago rechazó la suscripción con notification_url, reintentando sin ella:",
+      res.status,
+      firstError
+    );
+    res = await send(body);
+  }
 
   if (!res.ok) {
     const errorText = await res.text();
