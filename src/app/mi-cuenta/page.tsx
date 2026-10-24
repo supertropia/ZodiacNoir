@@ -3,6 +3,8 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CancelMembershipButton } from "@/components/membership/CancelMembershipButton";
+import { formatArgentinaDateTime, getReadingService } from "@/lib/lecturas";
+import { getReadingsEnabled } from "@/lib/site-settings";
 
 export const metadata = { title: "Mi cuenta" };
 export const dynamic = "force-dynamic";
@@ -30,16 +32,23 @@ export default async function MiCuentaPage() {
     );
   }
 
-  const [subscription, purchases] = await Promise.all([
+  const [subscription, purchases, readings] = await Promise.all([
     prisma.subscription.findUnique({ where: { email }, include: { plan: true } }),
     prisma.purchase.findMany({
       where: { email, status: "paid" },
       include: { product: true },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.readingOrder.findMany({
+      where: { email, status: { in: ["paid", "delivered"] } },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const isActive = !!subscription && ACTIVE_STATUSES.includes(subscription.status);
+  // Con las lecturas ocultas, la sección solo aparece para quien ya tiene algún pedido.
+  const readingsEnabled = await getReadingsEnabled();
+  const showReadings = readingsEnabled || readings.length > 0;
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-16">
@@ -96,6 +105,43 @@ export default async function MiCuentaPage() {
           </div>
         )}
       </section>
+
+      {showReadings && (
+      <section className="mt-8 rounded-2xl border border-gold/20 bg-noir-surface/50 p-7">
+        <h2 className="font-display text-xl text-gold-pale">Tus lecturas</h2>
+        {readings.length === 0 ? (
+          <p className="mt-4 font-ui text-sm text-gold-dim">
+            Todavía no pediste ninguna lectura.{" "}
+            <Link href="/lecturas" className="text-gold underline">
+              Ver lecturas
+            </Link>
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {readings.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-4 font-ui text-sm text-gold-pale/85">
+                <span>
+                  {getReadingService(r.service)?.name ?? "Lectura"}
+                  {r.status === "paid" && r.deliverBy ? (
+                    <span className="block text-xs text-gold-dim">
+                      En preparación · te llega a más tardar el {formatArgentinaDateTime(r.deliverBy)}
+                    </span>
+                  ) : null}
+                  {r.status === "delivered" && !r.fileUrl ? (
+                    <span className="block text-xs text-gold-dim">Entregada · te la enviamos a tu correo</span>
+                  ) : null}
+                </span>
+                {r.status === "delivered" && r.fileUrl ? (
+                  <a href={r.fileUrl} className="shrink-0 text-gold underline hover:text-gold-bright">
+                    Descargar
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      )}
 
       <section className="mt-8 rounded-2xl border border-gold/20 bg-noir-surface/50 p-7">
         <h2 className="font-display text-xl text-gold-pale">Tus PDFs comprados</h2>
