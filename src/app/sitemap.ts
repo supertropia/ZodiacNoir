@@ -2,14 +2,17 @@ import type { MetadataRoute } from "next";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
+import { getReadingsEnabled } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
+  const readingsEnabled = await getReadingsEnabled();
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/`, changeFrequency: "daily", priority: 1 },
+    ...(readingsEnabled ? [{ url: `${siteUrl}/lecturas`, changeFrequency: "weekly" as const, priority: 0.9 }] : []),
     { url: `${siteUrl}/articulos`, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/signos`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${siteUrl}/efemerides`, changeFrequency: "weekly", priority: 0.8 },
