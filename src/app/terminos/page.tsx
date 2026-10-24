@@ -87,9 +87,10 @@ export default function TerminosPage() {
               cambia después. Las comisiones del medio de pago que correspondan a tu medio de pago
               son ajenas al sitio.
             </li>
+
             <li>
-              <strong>Plazo de entrega.</strong> La lectura se entrega en un plazo de 48 a 72 horas
-              desde la confirmación del pago, al correo que indicaste. Revisa también la carpeta de
+              <strong>Plazo de entrega.</strong> La lectura se entrega en un plazo de 5 a 7 días hábiles
+              desde la confirmación del pago, por correo electrónico, al correo que indicaste. Revisa también la carpeta de
               correo no deseado. Si por una causa ajena se produjera una demora, te avisaremos.
             </li>
             <li>
