@@ -323,7 +323,7 @@ export function ProductDetail({
                         onClick={payWithMercadoPago}
                         className="focus-ring w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
                       >
-                        {payLoading ? "Redirigiendo…" : "Adquirir"}
+                        {payLoading ? "Redirigiendo…" : "Comprar"}
                       </button>
                     </>
                   )}
