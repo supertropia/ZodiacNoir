@@ -7,19 +7,29 @@ import { FontSizeControl } from "./FontSizeControl";
 import { SearchBar } from "./SearchBar";
 import { AccountMenu } from "./AccountMenu";
 import { MobileNav } from "./MobileNav";
+import { getReadingsEnabled } from "@/lib/site-settings";
 
-const NAV = [
+type NavEntry = { href: string; label: string; highlight?: boolean; mobileOnly?: boolean };
+
+// "Lecturas" va primero y resaltada: es el servicio central del sitio.
+// "Sobre nosotros" queda solo en el menú del celular (en escritorio es accesible desde el pie de página
+// y no entra en la barra junto a los otros siete enlaces).
+const NAV: NavEntry[] = [
+  { href: "/lecturas", label: "Lecturas", highlight: true },
   { href: "/articulos", label: "Artículos" },
   { href: "/signos", label: "Signos" },
   { href: "/efemerides", label: "Efemérides" },
   { href: "/tienda", label: "Tienda" },
   { href: "/membresia", label: "Membresía" },
-  { href: "/sobre-nosotros", label: "Sobre nosotros" },
+  { href: "/sobre-nosotros", label: "Sobre nosotros", mobileOnly: true },
 ];
 
 export async function Header() {
   const session = await getServerSession(authOptions);
   const isAdmin = isAdminEmail(session?.user?.email);
+  // "Lecturas" solo aparece en el menú cuando se publican desde el panel.
+  const readingsEnabled = await getReadingsEnabled();
+  const navItems = NAV.filter((item) => readingsEnabled || item.href !== "/lecturas");
 
   return (
     <header className="sticky top-0 z-40 border-b border-gold/15 bg-noir-bg/85 backdrop-blur supports-[backdrop-filter]:bg-noir-bg/70">
@@ -40,8 +50,16 @@ export async function Header() {
           </Link>
 
           <nav className="hidden items-center gap-5 font-ui text-[13px] uppercase tracking-wide text-gold-pale/90 xl:flex 2xl:gap-7 2xl:text-sm">
-            {NAV.map((item) => (
-              <Link key={item.href} href={item.href} className="transition hover:text-gold">
+            {navItems.filter((item) => !item.mobileOnly).map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  item.highlight
+                    ? "rounded-full border border-gold bg-gold/10 px-3.5 py-1 text-gold transition hover:bg-gold hover:text-noir-bg"
+                    : "transition hover:text-gold"
+                }
+              >
                 {item.label}
               </Link>
             ))}
@@ -62,7 +80,7 @@ export async function Header() {
               />
             </div>
             <MobileNav
-              items={NAV}
+              items={navItems}
               isAdmin={isAdmin}
               name={session?.user?.name}
               email={session?.user?.email}
