@@ -156,6 +156,54 @@ model Purchase {
   @@index([email])
 }
 
+// Pedidos de lecturas personalizadas (carta natal y revolución solar).
+// El precio se publica en USD pero Mercado Pago cobra en pesos: al crear el pedido se fija
+// la cotización (exchangeRate) y el monto en ARS (priceArs) que se cobra.
+// Estados: pending (esperando el pago) · paid (pagado, por entregar) · delivered (PDF enviado)
+//          · refunded (devuelto) · cancelled (no se pudo iniciar el pago).
+model ReadingOrder {
+  id                   String    @id @default(cuid())
+  // "carta-natal" | "revolucion-solar" (ver src/lib/lecturas.ts)
+  service              String
+  status               String    @default("pending")
+  email                String
+  name                 String
+  // Datos de nacimiento. birthDate = AAAA-MM-DD; birthTime = HH:MM (vacío si no se conoce).
+  birthDate            String
+  birthTime            String?
+  // "exact" | "approx" | "unknown"
+  birthTimeMode        String    @default("exact")
+  birthPlace           String
+  // Área de interés elegida (ver READING_FOCUS_OPTIONS en src/lib/lecturas.ts)
+  focus                String
+  about                String?   @db.Text
+  // Solo para la revolución solar: año del cumpleaños y lugar donde estará esa persona ese día.
+  solarYear            Int?
+  solarPlace           String?
+  priceUsd             Int
+  exchangeRate         Float
+  priceArs             Int
+  mercadoPagoPaymentId String?   @unique
+  paidAt               DateTime?
+  // Fecha límite de entrega: momento del pago + horas de entrega (READING_DELIVERY_HOURS).
+  deliverBy            DateTime?
+  deliveredAt          DateTime?
+  fileUrl              String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([email])
+  @@index([status, deliverBy])
+}
+
+// Ajustes del sitio que se cambian desde el panel (clave → valor en texto).
+// Hoy se usa para "readings_enabled": "true" muestra las lecturas al público, cualquier otro valor las oculta.
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Article {
   id             String    @id @default(cuid())
   slug           String    @unique
