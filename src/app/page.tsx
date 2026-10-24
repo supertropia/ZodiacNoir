@@ -7,6 +7,8 @@ import { SocialLinks } from "@/components/SocialLinks";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
+import { READING_DELIVERY_WINDOW, READING_SERVICES, formatUsd } from "@/lib/lecturas";
+import { getReadingsEnabled } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,8 @@ export default async function HomePage() {
     })
   );
   const [featured, ...rest] = articles;
+  // Las lecturas solo se muestran en la portada cuando se publican desde el panel.
+  const readingsEnabled = await getReadingsEnabled();
 
   return (
     <>
@@ -45,9 +49,17 @@ export default async function HomePage() {
                 En celular los botones ocupan todo el ancho (mismo tamaño, fáciles de tocar);
                 en pantallas más grandes forman una grilla de 2 x 2 prolija. */}
             <div className="mt-9 grid gap-3 sm:max-w-xl sm:grid-cols-2">
+              {readingsEnabled && (
+                <Link
+                  href="/lecturas"
+                  className="focus-ring rounded-full bg-gold px-6 py-3.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright sm:col-span-2"
+                >
+                  Pide tu lectura personalizada
+                </Link>
+              )}
               <Link
                 href="/tienda"
-                className="focus-ring rounded-full bg-gold px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
               >
                 Tienda de e-books
               </Link>
@@ -81,6 +93,45 @@ export default async function HomePage() {
       <div className="mx-auto max-w-6xl px-5">
         <div className="gold-line" />
       </div>
+
+      {/* Lecturas personalizadas: solo visibles cuando se publican desde el panel */}
+      {readingsEnabled && (
+      <>
+      <section className="mx-auto max-w-6xl px-5 py-16" aria-labelledby="home-lecturas">
+        <div className="max-w-2xl">
+          <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Lecturas personalizadas</p>
+          <h2 id="home-lecturas" className="mt-2 font-display text-3xl text-gold-pale sm:text-4xl">
+            Tu carta, leída como un mapa de tu psique
+          </h2>
+          <p className="mt-4 font-body text-xl leading-relaxed text-gold-pale/85">
+            Astrología humanista y mirada arquetípica, escrita para ti. La recibes en PDF por correo en un plazo de{" "}
+            {READING_DELIVERY_WINDOW} desde la confirmación del pago.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {READING_SERVICES.map((s) => (
+            <Link
+              key={s.key}
+              href={`/lecturas?servicio=${s.key}#pedido`}
+              className="focus-ring group flex flex-col rounded-3xl border border-gold/25 bg-noir-surface/50 p-7 transition hover:border-gold hover:bg-noir-surface"
+            >
+              <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">{s.eyebrow}</p>
+              <h3 className="mt-2 font-display text-2xl text-gold-pale">{s.name}</h3>
+              <p className="mt-3 font-body text-lg leading-relaxed text-gold-pale/85">{s.summary}</p>
+              <p className="mt-5 flex items-center justify-between font-ui text-sm">
+                <span className="font-display text-2xl text-gold">{formatUsd(s.priceUsd)}</span>
+                <span className="uppercase tracking-wide text-gold group-hover:text-gold-bright">{s.cta} →</span>
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-6xl px-5">
+        <div className="gold-line" />
+      </div>
+      </>
+      )}
 
       {/* Destacado + próximo evento */}
       <section className="mx-auto max-w-6xl px-5 py-16">
