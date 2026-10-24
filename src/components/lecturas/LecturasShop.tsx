@@ -444,7 +444,7 @@ export function LecturasShop({
                 disabled={loading}
                 className="focus-ring w-full rounded-full bg-gold px-6 py-4 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60"
               >
-                {loading ? "Preparando tu pago…" : `Pagar con Mercado Pago · ${formatUsd(service.priceUsd)}`}
+                {loading ? "Preparando tu pago…" : `Pagar · ${formatUsd(service.priceUsd)}`}
               </button>
               <p className="mt-3 text-center font-ui text-xs leading-relaxed text-gold-dim">
                 {service.priceArs ? (
