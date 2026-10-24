@@ -5,17 +5,33 @@
 // Los precios se fijan en dólares (USD). Mercado Pago cobra en pesos, así que el monto en ARS
 // se calcula en el momento de la compra (ver src/lib/exchange-rate.ts).
 
-/** Plazo mínimo prometido, en horas, desde que se confirma el pago. */
-export const READING_DELIVERY_MIN_HOURS = 48;
+/** Plazo mínimo prometido, en días hábiles, desde que se confirma el pago. */
+export const READING_DELIVERY_MIN_BUSINESS_DAYS = 5;
 
 /**
- * Plazo máximo prometido, en horas, desde que se confirma el pago. Es el que se usa como fecha
- * límite de entrega (deliverBy) de cada pedido y el que marca el atraso en el panel.
+ * Plazo máximo prometido, en días hábiles, desde que se confirma el pago. Es el que se usa como
+ * fecha límite de entrega (deliverBy) de cada pedido y el que marca el atraso en el panel.
  */
-export const READING_DELIVERY_HOURS = 72;
+export const READING_DELIVERY_MAX_BUSINESS_DAYS = 7;
 
 /** Cómo se escribe el plazo en los textos del sitio y de los correos. */
-export const READING_DELIVERY_WINDOW = `${READING_DELIVERY_MIN_HOURS} a ${READING_DELIVERY_HOURS} horas`;
+export const READING_DELIVERY_WINDOW = `${READING_DELIVERY_MIN_BUSINESS_DAYS} a ${READING_DELIVERY_MAX_BUSINESS_DAYS} días hábiles`;
+
+/**
+ * Suma días hábiles (lunes a viernes) a una fecha, contando en hora de Argentina (UTC-3, sin
+ * horario de verano). Conserva la hora del día. No considera feriados nacionales.
+ */
+export function addBusinessDays(from: Date, days: number): Date {
+  const OFFSET_MS = 3 * 3600 * 1000;
+  const local = new Date(from.getTime() - OFFSET_MS); // los getUTC* leen la hora argentina
+  let remaining = days;
+  while (remaining > 0) {
+    local.setUTCDate(local.getUTCDate() + 1);
+    const dow = local.getUTCDay();
+    if (dow !== 0 && dow !== 6) remaining--;
+  }
+  return new Date(local.getTime() + OFFSET_MS);
+}
 
 export type ReadingServiceKey = "carta-natal" | "revolucion-solar";
 
