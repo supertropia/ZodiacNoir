@@ -49,7 +49,7 @@ const STEPS = [
   },
   {
     title: "Me cuentas tus datos",
-    text: "Fecha, hora y lugar de nacimiento, y qué área te gustaría profundizar. Pagas con Mercado Pago.",
+    text: "Fecha, hora y lugar de nacimiento, y qué área te gustaría profundizar. Luego pagas con tarjeta, transferencia o efectivo.",
   },
   {
     title: `La recibes en ${READING_DELIVERY_WINDOW}`,
@@ -227,7 +227,7 @@ export default async function LecturasPage({
               <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">
                 PDF a tu correo en 5 a 7 días hábiles
               </li>
-              <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Pago con Mercado Pago</li>
+              <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Pago con tarjeta, transferencia o efectivo</li>
               <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Lectura personalizada</li>
             </ul>
             <a
