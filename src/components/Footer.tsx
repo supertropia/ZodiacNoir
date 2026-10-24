@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { SocialLinks } from "./SocialLinks";
+import { getReadingsEnabled } from "@/lib/site-settings";
 
-export function Footer() {
+export async function Footer() {
+  const readingsEnabled = await getReadingsEnabled();
   return (
     <footer className="mt-24 border-t border-gold/15">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-3">
@@ -17,6 +19,9 @@ export function Footer() {
         <div className="font-ui text-sm text-gold-pale/90">
           <p className="mb-3 uppercase tracking-wide text-gold-dim">Explorar</p>
           <ul className="space-y-2">
+            {readingsEnabled && (
+              <li><Link href="/lecturas" className="hover:text-gold">Lecturas personalizadas</Link></li>
+            )}
             <li><Link href="/articulos" className="hover:text-gold">Artículos</Link></li>
             <li><Link href="/signos" className="hover:text-gold">Signos</Link></li>
             <li><Link href="/efemerides" className="hover:text-gold">Efemérides</Link></li>
