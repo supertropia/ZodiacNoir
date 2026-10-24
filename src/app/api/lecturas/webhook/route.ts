@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getReadingPayment } from "@/lib/lecturas-mp";
-import { READING_DELIVERY_HOURS } from "@/lib/lecturas";
+import { READING_DELIVERY_MAX_BUSINESS_DAYS, addBusinessDays } from "@/lib/lecturas";
 import { sendReadingPaidEmails } from "@/lib/lecturas-email";
 
 export const runtime = "nodejs";
@@ -58,7 +58,7 @@ async function handleNotification(req: Request) {
         data: {
           status: "paid",
           paidAt,
-          deliverBy: new Date(paidAt.getTime() + READING_DELIVERY_HOURS * 3600 * 1000),
+          deliverBy: addBusinessDays(paidAt, READING_DELIVERY_MAX_BUSINESS_DAYS),
           mercadoPagoPaymentId: String(payment.id),
         },
       });
