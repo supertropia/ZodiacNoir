@@ -228,7 +228,7 @@ export default async function LecturasPage({
                 PDF a tu correo en 5 a 7 días hábiles
               </li>
               <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Pago con Mercado Pago</li>
-              <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Escrita para una sola persona</li>
+              <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Lectura personalizada</li>
             </ul>
             <a
               href="#elige"
