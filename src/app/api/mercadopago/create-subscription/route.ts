@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSubscription } from "@/lib/mercadopago";
+import { getUsdArsQuote, usdToArs } from "@/lib/exchange-rate";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     const payerEmail = session?.user?.email;
     if (!payerEmail) {
-      return NextResponse.json({ error: "Iniciá sesión para suscribirte." }, { status: 401 });
+      return NextResponse.json({ error: "Inicia sesión para suscribirte." }, { status: 401 });
     }
 
     const { planId } = await req.json();
@@ -25,9 +26,25 @@ export async function POST(req: Request) {
     if (!plan) {
       return NextResponse.json({ error: "Plan no encontrado." }, { status: 404 });
     }
-    if (!plan.priceArs) {
+
+    // El plan se publica en dólares: Mercado Pago cobra en pesos, así que se convierte al dólar blue
+    // del momento (más el margen). Ese monto en pesos queda fijo en la suscripción hasta que se
+    // actualice desde el panel (Membresías → "Actualizar cobros en Mercado Pago").
+    let priceArs: number;
+    if (plan.priceUsd && plan.priceUsd > 0) {
+      const quote = await getUsdArsQuote();
+      if (!quote) {
+        return NextResponse.json(
+          { error: "No pudimos obtener la cotización del dólar en este momento. Inténtalo de nuevo en unos minutos." },
+          { status: 503 }
+        );
+      }
+      priceArs = usdToArs(plan.priceUsd, quote.rate);
+    } else if (plan.priceArs) {
+      priceArs = plan.priceArs;
+    } else {
       return NextResponse.json(
-        { error: "Este plan no tiene precio en ARS configurado para Mercado Pago." },
+        { error: "Este plan no tiene precio configurado para Mercado Pago." },
         { status: 400 }
       );
     }
@@ -35,7 +52,7 @@ export async function POST(req: Request) {
     // Si ya es miembro, no creamos otra suscripción (evita cobrarle dos veces).
     const existing = await prisma.subscription.findUnique({ where: { email: payerEmail } });
     if (existing && ACTIVE_STATUSES.includes(existing.status)) {
-      return NextResponse.json({ error: "Ya sos miembro de Zodiac Noir Plus." }, { status: 400 });
+      return NextResponse.json({ error: "Ya eres miembro de Zodiac Noir Plus." }, { status: 400 });
     }
 
     const frequency = plan.interval === "año" ? 12 : 1;
@@ -43,7 +60,7 @@ export async function POST(req: Request) {
     const subscription = await createSubscription({
       planId: plan.id,
       reason: `${plan.name} — Zodiac Noir`,
-      priceArs: plan.priceArs,
+      priceArs,
       frequency,
       payerEmail,
     });
