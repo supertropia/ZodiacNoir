@@ -1,11 +1,11 @@
-
 import { NextResponse } from "next/server";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
-import { estimateReadingMinutes } from "@/lib/slugify";
+import { estimateReadingMinutes, slugify } from "@/lib/slugify";
 import { sanitizeArticleHtml, htmlToPlainText } from "@/lib/sanitize-html";
 import { parsePublishDate, resolvePublishedAt } from "@/lib/publication";
 import { normalizeSeoFields } from "@/lib/seo";
+import { DRAFT_DEFAULT_CATEGORY, DRAFT_TITLE_PLACEHOLDER, makeDraftSlug } from "@/lib/draft";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await requireAdminSession();
@@ -23,13 +23,26 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   try {
     const body = await req.json();
     const {
-      slug, title, excerpt, content, coverImage, coverImagePosX, coverImagePosY,
-      category, sign, published, publishedAt, featuredProductId, isPremium,
+      coverImage, coverImagePosX, coverImagePosY,
+      sign, published, publishedAt, featuredProductId, isPremium,
     } = body;
 
-    if (!slug || !title || !excerpt || !content || !category) {
-      return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    const isPublishing = Boolean(published);
+    const str = (value: unknown) => (typeof value === "string" ? value : "");
+
+    // Publicar (o programar) exige todo completo. Un borrador se puede guardar con campos vacíos:
+    // lo que falte se completa con valores provisorios.
+    if (isPublishing && (!str(body.slug).trim() || !str(body.title).trim() || !str(body.excerpt).trim() || !str(body.content).trim() || !str(body.category).trim())) {
+      return NextResponse.json(
+        { error: "Para publicar hacen falta título, slug, copete, categoría y contenido. Puedes guardarlo como borrador y completarlo después." },
+        { status: 400 }
+      );
     }
+
+    const title = str(body.title).trim() || DRAFT_TITLE_PLACEHOLDER;
+    const excerpt = str(body.excerpt);
+    const content = str(body.content);
+    const category = str(body.category).trim() || DRAFT_DEFAULT_CATEGORY;
 
     const { date: requestedDate, error: dateError } = parsePublishDate(publishedAt);
     if (dateError) {
@@ -43,6 +56,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const current = await safeQuery(() => prisma.article.findUnique({ where: { id: params.id } }));
     if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+    // Sin slug (solo posible en un borrador): se deduce del título o se conserva el actual.
+    const slug =
+      str(body.slug).trim() ||
+      (str(body.title).trim() ? slugify(str(body.title)) : "") ||
+      current.slug ||
+      makeDraftSlug();
 
     if (slug !== current.slug) {
       const clashing = await safeQuery(() => prisma.article.findUnique({ where: { slug } }));
