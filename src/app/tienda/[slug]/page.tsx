@@ -10,6 +10,8 @@ import { toPlainText } from "@/components/store/FormattedText";
 import { toProductViewModel } from "@/lib/store-products";
 import { buildProductJsonLd, summarize } from "@/lib/product-seo";
 import { serializeJsonLd } from "@/lib/seo";
+import { getUsdArsQuote } from "@/lib/exchange-rate";
+import { getPaypalVisibility } from "@/lib/paypal-access";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +65,9 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
-  const view = await toProductViewModel(product, email);
+  const quote = await getUsdArsQuote();
+  const paypal = await getPaypalVisibility();
+  const view = await toProductViewModel(product, email, "/tienda?compra=1", { fxRate: quote?.rate ?? null, paypal });
 
   const others = await safeQuery(() =>
     prisma.product.findMany({
@@ -82,6 +86,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
     image: product.coverImage || product.heroImage,
     slug: product.slug,
     priceArs: product.priceArs,
+    priceUsd: product.priceUsd,
     keywords: [product.focusKeyword, ...product.tags].filter((k): k is string => Boolean(k)),
     faq: view.faq,
   });
