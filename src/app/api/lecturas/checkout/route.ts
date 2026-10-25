@@ -6,6 +6,8 @@ import { validateReadingRequest } from "@/lib/lecturas-validation";
 import { createReadingPreference } from "@/lib/lecturas-mp";
 import { getReadingsEnabled } from "@/lib/site-settings";
 import { requireAdminSession } from "@/lib/require-admin";
+import { createPaypalOrder, getSiteUrl, isPaypalConfigured } from "@/lib/paypal";
+import { canUsePaypal } from "@/lib/paypal-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +54,56 @@ export async function POST(req: Request) {
         { error: "Ya iniciaste varios pedidos hace un momento. Espera un rato o escríbenos desde Contacto." },
         { status: 429 }
       );
+    }
+
+    // Pago con PayPal: se cobra directamente en dólares, sin conversión.
+    if (body.provider === "paypal") {
+      if (!(await canUsePaypal())) {
+        return NextResponse.json({ error: "El pago con PayPal todavía no está disponible." }, { status: 403 });
+      }
+      if (!isPaypalConfigured()) {
+        return NextResponse.json(
+          { error: "Falta configurar las credenciales de PayPal en Vercel (PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET)." },
+          { status: 503 }
+        );
+      }
+
+      const paypalOrder = await prisma.readingOrder.create({
+        data: {
+          service: data.service,
+          status: "pending",
+          provider: "paypal",
+          email: data.email,
+          name: data.name,
+          birthDate: data.birthDate,
+          birthTime: data.birthTime,
+          birthTimeMode: data.birthTimeMode,
+          birthPlace: data.birthPlace,
+          focus: data.focus,
+          about: data.about,
+          solarYear: data.solarYear,
+          solarPlace: data.solarPlace,
+          priceUsd: service.priceUsd,
+          exchangeRate: 0,
+          priceArs: 0,
+        },
+      });
+
+      try {
+        const siteUrl = getSiteUrl();
+        const created = await createPaypalOrder({
+          amountUsd: service.priceUsd,
+          description: `${service.name} — Zodiac Noir`,
+          customId: `reading:${paypalOrder.id}`,
+          returnUrl: `${siteUrl}/api/paypal/return?kind=reading&ref=${encodeURIComponent(paypalOrder.id)}`,
+          cancelUrl: `${siteUrl}/lecturas?pago=error`,
+        });
+        return NextResponse.json({ url: created.approveUrl });
+      } catch (error) {
+        console.error("No se pudo iniciar el cobro de la lectura con PayPal:", error);
+        await prisma.readingOrder.update({ where: { id: paypalOrder.id }, data: { status: "cancelled" } });
+        return NextResponse.json({ error: "No se pudo iniciar el pago con PayPal. Inténtalo de nuevo en unos minutos." }, { status: 502 });
+      }
     }
 
     // Mercado Pago cobra en pesos y no convierte: fijamos acá la cotización y el monto en ARS.
