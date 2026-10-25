@@ -394,7 +394,7 @@ export function buildArticleJsonLd(input: ArticleJsonLdInput) {
     "@id": `${input.url}#breadcrumbs`,
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Inicio", item: `${input.siteUrl}/` },
-      { "@type": "ListItem", position: 2, name: "Artículos", item: `${input.siteUrl}/articulos` },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${input.siteUrl}/blog` },
       { "@type": "ListItem", position: 3, name: input.title, item: input.url },
     ],
   };
