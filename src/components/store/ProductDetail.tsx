@@ -6,6 +6,8 @@ import { ShareButtons } from "@/components/ShareButtons";
 import { FormattedText } from "@/components/store/FormattedText";
 import { StoreViewTracker } from "@/components/store/StoreViewTracker";
 import type { ProductViewModel } from "@/lib/store-products";
+import { PaypalButton } from "@/components/PaypalButton";
+import { FX_NOTE, formatArsAmount, formatUsdAmount } from "@/lib/pricing";
 
 function Carousel({
   itemCount,
@@ -239,7 +241,10 @@ export function ProductDetail({
     }
   };
 
-  const hasPdfOffer = product.owned || Boolean(product.priceArs);
+  // Precio publicado: en dólares. Los productos viejos que solo tienen precio en pesos siguen igual.
+  const hasUsdPrice = Boolean(product.priceUsd && product.priceUsd > 0);
+  const hasMercadoPago = hasUsdPrice || Boolean(product.priceArs);
+  const hasPdfOffer = product.owned || hasMercadoPago;
   const hasAmazon = Boolean(product.amazonKindleUrl || product.amazonPaperbackUrl);
 
   return (
@@ -293,7 +298,11 @@ export function ProductDetail({
             {hasPdfOffer && (
               <div className="flex h-full flex-col rounded-xl border border-gold/25 bg-noir-surface2/50 p-4">
                 <p className="font-ui text-xs uppercase tracking-wide text-gold-pale">PDF digital · descarga inmediata</p>
-                <p className="mt-0.5 font-ui text-[11px] text-gold-dim">Mercado Pago · válido para LATAM</p>
+                <p className="mt-0.5 font-ui text-[11px] text-gold-dim">
+                  {product.paypal !== "hidden" && hasUsdPrice
+                    ? "Mercado Pago (Latinoamérica) o PayPal (todo el mundo)"
+                    : "Mercado Pago · válido para LATAM"}
+                </p>
                 <p className="mt-1 flex items-center gap-1 font-ui text-[11px] text-sky-400">
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
                     <path
@@ -314,17 +323,38 @@ export function ProductDetail({
                     </a>
                   ) : (
                     <>
-                      <p className="mb-2 font-ui text-lg font-medium text-gold-pale">
-                        ARS {product.priceArs?.toLocaleString("es-AR")}
-                      </p>
-                      <button
-                        type="button"
-                        disabled={payLoading}
-                        onClick={payWithMercadoPago}
-                        className="focus-ring w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
-                      >
-                        {payLoading ? "Redirigiendo…" : "Comprar"}
-                      </button>
+                      {hasUsdPrice ? (
+                        <div className="mb-3">
+                          <p className="font-ui text-lg font-medium text-gold-pale">{formatUsdAmount(product.priceUsd!)}</p>
+                          <p className="mt-0.5 font-ui text-[11px] leading-snug text-gold-dim">
+                            {product.priceArsEstimate
+                              ? `≈ ${formatArsAmount(product.priceArsEstimate)} con Mercado Pago. ${FX_NOTE}`
+                              : FX_NOTE}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mb-2 font-ui text-lg font-medium text-gold-pale">
+                          ARS {product.priceArs?.toLocaleString("es-AR")}
+                        </p>
+                      )}
+                      <div className="space-y-2.5">
+                        <button
+                          type="button"
+                          disabled={payLoading}
+                          onClick={payWithMercadoPago}
+                          className="focus-ring w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+                        >
+                          {payLoading ? "Redirigiendo…" : hasUsdPrice ? "Comprar con Mercado Pago" : "Comprar"}
+                        </button>
+                        {hasUsdPrice && (
+                          <PaypalButton
+                            endpoint="/api/paypal/create-order"
+                            body={{ productId: product.id }}
+                            visibility={product.paypal}
+                            label={`Comprar con PayPal · ${formatUsdAmount(product.priceUsd!)}`}
+                          />
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
