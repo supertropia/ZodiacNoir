@@ -225,3 +225,24 @@ export async function cancelPreapproval(preapprovalId: string): Promise<void> {
     throw new Error("No se pudo cancelar la suscripción en Mercado Pago.");
   }
 }
+
+/**
+ * Cambia el monto mensual de una suscripción activa en Mercado Pago (siempre en pesos).
+ * Se usa desde el panel para ajustar los cobros al dólar blue del día.
+ */
+export async function updatePreapprovalAmount(preapprovalId: string, amountArs: number): Promise<void> {
+  const res = await fetch(`${MP_API_BASE}/preapproval/${preapprovalId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify({ auto_recurring: { transaction_amount: amountArs, currency_id: "ARS" } }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Error actualizando el monto de una suscripción de Mercado Pago:", res.status, errorText);
+    throw new Error(`Mercado Pago rechazó el cambio de monto (${res.status}).`);
+  }
+}
