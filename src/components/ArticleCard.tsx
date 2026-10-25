@@ -15,7 +15,7 @@ export function ArticleCard({
 
   return (
     <Link
-      href={`/articulos/${article.slug}`}
+      href={`/blog/${article.slug}`}
       className={`group flex h-full overflow-hidden rounded-2xl border border-gold/15 bg-noir-surface/40 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:bg-noir-surface hover:shadow-xl hover:shadow-black/30 ${
         compact ? "flex-row sm:flex-col" : "flex-col"
       }`}
