@@ -13,6 +13,7 @@ export type PlanFormValues = {
   interval: string;
   lemonVariantId: string;
   priceArs: number | null;
+  priceUsd: number | null;
   featured: boolean;
   benefits: string; // separado por "|"
 };
@@ -23,7 +24,7 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
   const [values, setValues] = useState<PlanFormValues>(
     initial ?? {
       slug: "", name: "", description: "", priceLabel: "", interval: "mes",
-      lemonVariantId: "", priceArs: null, featured: false, benefits: "",
+      lemonVariantId: "", priceArs: null, priceUsd: null, featured: false, benefits: "",
     }
   );
   const [benefitsText, setBenefitsText] = useState(
@@ -45,8 +46,8 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
     e.preventDefault();
     setError("");
 
-    if (!values.priceArs && !values.lemonVariantId) {
-      setError("Configurá al menos un medio de pago: Precio en ARS (Mercado Pago) o Variant ID (Lemon Squeezy).");
+    if (!values.priceUsd && !values.priceArs && !values.lemonVariantId) {
+      setError("Configura al menos un medio de pago: Precio en USD (Mercado Pago y PayPal) o Variant ID (Lemon Squeezy).");
       return;
     }
 
@@ -110,9 +111,9 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label className={labelClass} htmlFor="priceLabel">Precio a mostrar</label>
-          <input id="priceLabel" required className={inputClass} value={values.priceLabel}
-            onChange={(e) => set("priceLabel", e.target.value)} placeholder="Ej. ARS 2.500/mes" />
+          <label className={labelClass} htmlFor="priceLabel">Texto del precio (opcional)</label>
+          <input id="priceLabel" className={inputClass} value={values.priceLabel}
+            onChange={(e) => set("priceLabel", e.target.value)} placeholder="Si lo dejas vacío se arma solo con el precio en USD" />
         </div>
         <div>
           <label className={labelClass} htmlFor="interval">Intervalo</label>
@@ -126,13 +127,13 @@ export function PlanForm({ initial }: { initial?: PlanFormValues }) {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label className={labelClass} htmlFor="priceArs">Precio en ARS (Mercado Pago)</label>
-          <input id="priceArs" type="number" min={0} className={inputClass}
-            value={values.priceArs ?? ""}
-            onChange={(e) => set("priceArs", e.target.value === "" ? null : Number(e.target.value))}
-            placeholder="Ej. 2500" />
+          <label className={labelClass} htmlFor="priceUsd">Precio en dólares (USD)</label>
+          <input id="priceUsd" type="number" min={0} step="0.01" className={inputClass}
+            value={values.priceUsd ?? ""}
+            onChange={(e) => set("priceUsd", e.target.value === "" ? null : Number(e.target.value))}
+            placeholder="Ej. 3" />
           <p className="mt-1.5 font-ui text-xs text-gold-dim">
-            Dejalo vacío si este plan solo se vende por Lemon Squeezy.
+            Es el precio que se publica. Mercado Pago lo cobra en pesos (dólar blue del día + margen) y PayPal en dólares.
           </p>
         </div>
         <div>
