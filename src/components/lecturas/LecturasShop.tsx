@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { PAYPAL_BUTTON_CLASS, PreviewTag } from "@/components/PaypalButton";
+import type { PaypalVisibility } from "@/lib/paypal-access";
 import {
   BIRTH_TIME_OPTIONS,
   READING_DELIVERY_WINDOW,
@@ -40,6 +42,7 @@ export function LecturasShop({
   todayIso,
   rateLabel,
   paymentCancelled,
+  paypal,
 }: {
   services: ShopService[];
   initialService: ReadingServiceKey | null;
@@ -49,6 +52,8 @@ export function LecturasShop({
   todayIso: string;
   rateLabel: string | null;
   paymentCancelled: boolean;
+  /** Quién ve el botón de PayPal: nadie, solo la administración o todos. */
+  paypal: PaypalVisibility;
 }) {
   const [selected, setSelected] = useState<ReadingServiceKey | null>(initialService);
   const [name, setName] = useState(defaultName);
@@ -65,6 +70,9 @@ export function LecturasShop({
   const [website, setWebsite] = useState(""); // trampa para bots: las personas no lo ven
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Con qué medio se está pagando: lo fija el botón que se toca antes de enviar el formulario.
+  const providerRef = useRef<"mercadopago" | "paypal">("mercadopago");
+  const [loadingProvider, setLoadingProvider] = useState<"mercadopago" | "paypal">("mercadopago");
   const formRef = useRef<HTMLDivElement>(null);
 
   const service = services.find((s) => s.key === selected) ?? null;
@@ -87,6 +95,7 @@ export function LecturasShop({
     e.preventDefault();
     if (!service || loading) return;
     setError("");
+    setLoadingProvider(providerRef.current);
     setLoading(true);
     try {
       const res = await fetch("/api/lecturas/checkout", {
@@ -106,6 +115,7 @@ export function LecturasShop({
           solarPlace: service.key === "revolucion-solar" ? solarPlace : undefined,
           consent,
           website,
+          provider: providerRef.current,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -438,24 +448,48 @@ export function LecturasShop({
               </p>
             )}
 
-            <div>
+            <div className="space-y-3">
               <button
                 type="submit"
                 disabled={loading}
+                onClick={() => {
+                  providerRef.current = "mercadopago";
+                }}
                 className="focus-ring w-full rounded-full bg-gold px-6 py-4 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60"
               >
-                {loading ? "Preparando tu pago…" : `Pagar · ${formatUsd(service.priceUsd)}`}
+                {loading && loadingProvider === "mercadopago"
+                  ? "Preparando tu pago…"
+                  : `Pagar con Mercado Pago · ${formatUsd(service.priceUsd)}`}
               </button>
-              <p className="mt-3 text-center font-ui text-xs leading-relaxed text-gold-dim">
+              {paypal !== "hidden" && (
+                <div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    onClick={() => {
+                      providerRef.current = "paypal";
+                    }}
+                    className={`${PAYPAL_BUTTON_CLASS} py-4`}
+                  >
+                    {loading && loadingProvider === "paypal"
+                      ? "Redirigiendo a PayPal…"
+                      : `Pagar con PayPal · ${formatUsd(service.priceUsd)}`}
+                  </button>
+                  {paypal === "preview" && <PreviewTag />}
+                </div>
+              )}
+              <p className="text-center font-ui text-xs leading-relaxed text-gold-dim">
                 {service.priceArs ? (
                   <>
-                    Mercado Pago cobra en pesos: pagarás aproximadamente <strong className="text-gold-pale">{formatArs(service.priceArs)}</strong>
+                    Con Mercado Pago se cobra en pesos al dólar blue del día: pagarás aproximadamente{" "}
+                    <strong className="text-gold-pale">{formatArs(service.priceArs)}</strong>
                     {rateLabel ? ` (${rateLabel})` : ""}. El monto final se fija al continuar.
                   </>
                 ) : (
-                  <>Mercado Pago cobra en pesos argentinos; verás el monto exacto antes de pagar.</>
-                )}{" "}
-                Recibirás tu lectura en PDF por correo en un plazo de {READING_DELIVERY_WINDOW} desde la confirmación del pago.
+                  <>Con Mercado Pago se cobra en pesos argentinos; verás el monto exacto antes de pagar.</>
+                )}
+                {paypal !== "hidden" ? " Con PayPal se cobra directamente en dólares." : ""} Recibirás tu lectura en PDF
+                por correo en un plazo de {READING_DELIVERY_WINDOW} desde la confirmación del pago.
               </p>
             </div>
           </form>
