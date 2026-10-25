@@ -76,7 +76,7 @@ export function SearchBar() {
           {results.map((a) => (
             <li key={a.slug} className="border-b border-gold/10 last:border-0">
               <Link
-                href={`/articulos/${a.slug}`}
+                href={`/blog/${a.slug}`}
                 className="block px-4 py-3 font-ui text-sm text-gold-pale transition hover:bg-gold/10"
               >
                 <span className="block font-display text-xs uppercase tracking-wide text-gold">
