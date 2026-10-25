@@ -200,7 +200,7 @@ export function analyzeProductSeo(input: ProductSeoInput): SeoCheck[] {
     id: "purchase",
     label: "Hay al menos una forma de comprar",
     status: input.hasPurchaseRoute ? "ok" : "warn",
-    hint: input.hasPurchaseRoute ? undefined : "Cargá el precio en ARS (PDF) o un link de Amazon (Kindle o libro físico).",
+    hint: input.hasPurchaseRoute ? undefined : "Cargá el precio en USD (PDF) o un link de Amazon (Kindle o libro físico).",
   });
 
   return checks;
@@ -218,6 +218,7 @@ export type ProductJsonLdInput = {
   image: string | null;
   slug: string;
   priceArs: number | null;
+  priceUsd?: number | null;
   keywords: string[];
   faq: FaqItem[];
 };
@@ -238,16 +239,17 @@ export function buildProductJsonLd(input: ProductJsonLdInput) {
     inLanguage: "es",
     keywords: input.keywords.length > 0 ? input.keywords.join(", ") : undefined,
     // Solo se declara precio cuando se vende el PDF directo (el precio de Amazon es texto libre y lo fija Amazon).
-    offers: input.priceArs
-      ? {
-          "@type": "Offer",
-          url: input.url,
-          price: input.priceArs,
-          priceCurrency: "ARS",
-          availability: "https://schema.org/InStock",
-          itemCondition: "https://schema.org/NewCondition",
-        }
-      : undefined,
+    offers:
+      input.priceUsd || input.priceArs
+        ? {
+            "@type": "Offer",
+            url: input.url,
+            price: input.priceUsd ?? input.priceArs,
+            priceCurrency: input.priceUsd ? "USD" : "ARS",
+            availability: "https://schema.org/InStock",
+            itemCondition: "https://schema.org/NewCondition",
+          }
+        : undefined,
   };
 
   const breadcrumbs = {
