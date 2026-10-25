@@ -26,8 +26,8 @@ export default function PrivacidadPage() {
               nacimiento, el área que quieres profundizar, el texto opcional que escribas sobre ti
               y, en la revolución solar, el año y el lugar donde estarás en tu cumpleaños.
             </li>
-            <li>Datos de pago, procesados directamente por Lemon Squeezy (membresías y PDFs) y por
-              Mercado Pago (lecturas). Nosotros no almacenamos números de tarjeta.</li>
+            <li>Datos de pago, procesados directamente por Lemon Squeezy, Mercado Pago y PayPal
+              (membresías, PDFs y lecturas). Nosotros no almacenamos números de tarjeta.</li>
             <li>Datos de navegación (páginas visitadas, dispositivo, ubicación aproximada) a
               través de cookies propias y de terceros, incluyendo las de Google AdSense y de
               analítica si están activas.</li>
@@ -85,7 +85,7 @@ export default function PrivacidadPage() {
           <h2 className="font-display text-xl text-gold">5. Con quién compartimos datos</h2>
           <p className="mt-2">
             Compartimos datos estrictamente necesarios con: Google (autenticación y publicidad),
-            Lemon Squeezy y Mercado Pago (procesamiento de pagos), Resend (envío de emails), las
+            Lemon Squeezy, Mercado Pago y PayPal (procesamiento de pagos), Resend (envío de emails), las
             herramientas de inteligencia artificial que usamos como apoyo para preparar las
             lecturas, y el proveedor de base de datos y hosting (Vercel y Neon). No vendemos tus
             datos personales a terceros.
