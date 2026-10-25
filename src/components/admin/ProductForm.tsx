@@ -17,6 +17,8 @@ export type ProductFormValues = {
   description: string;
   priceLabel: string;
   priceArs: number | null;
+  priceUsd: number | null;
+  kind: string;
   amazonKindleUrl: string;
   amazonKindlePrice: string;
   amazonPaperbackUrl: string;
@@ -45,7 +47,7 @@ export type ProductFormValues = {
 
 const emptyValues: ProductFormValues = {
   slug: "", title: "", description: "", priceLabel: "",
-  priceArs: null, amazonKindleUrl: "", amazonKindlePrice: "", amazonPaperbackUrl: "", amazonPaperbackPrice: "",
+  priceArs: null, priceUsd: null, kind: "book", amazonKindleUrl: "", amazonKindlePrice: "", amazonPaperbackUrl: "", amazonPaperbackPrice: "",
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
@@ -226,9 +228,34 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
 
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
-            <label className={labelClass} htmlFor="priceLabel">Precio a mostrar</label>
-            <input id="priceLabel" required className={inputClass} value={values.priceLabel}
-              onChange={(e) => set("priceLabel", e.target.value)} placeholder="Ej. USD 9,90" />
+            <label className={labelClass} htmlFor="priceUsd">Precio en dólares (USD)</label>
+            <input id="priceUsd" type="number" min={0} step="0.01" className={inputClass}
+              value={values.priceUsd ?? ""}
+              onChange={(e) => set("priceUsd", e.target.value === "" ? null : Number(e.target.value))}
+              placeholder="Ej. 9.99" />
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Es el precio que se publica en la web. Con Mercado Pago se cobra en pesos, al dólar blue del día
+              más el margen; con PayPal se cobra en dólares. Dejalo vacío si el producto no se vende como PDF.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="kind">Tipo de producto</label>
+            <select id="kind" className={inputClass} value={values.kind}
+              onChange={(e) => set("kind", e.target.value)}>
+              <option value="book" className="bg-noir-surface">Libro / e-book</option>
+              <option value="pdf" className="bg-noir-surface">Material PDF descargable (calendarios, cuadernos…)</option>
+            </select>
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Define en qué sección de la tienda aparece.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="priceLabel">Texto del precio (opcional)</label>
+            <input id="priceLabel" className={inputClass} value={values.priceLabel}
+              onChange={(e) => set("priceLabel", e.target.value)} placeholder="Si lo dejas vacío se arma solo con el precio en USD" />
           </div>
           <div>
             <label className={labelClass} htmlFor="lemonVariantId">Variant ID de Lemon Squeezy</label>
@@ -239,16 +266,6 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="priceArs">Precio en ARS (Mercado Pago)</label>
-            <input id="priceArs" type="number" min={0} className={inputClass}
-              value={values.priceArs ?? ""}
-              onChange={(e) => set("priceArs", e.target.value === "" ? null : Number(e.target.value))}
-              placeholder="Ej. 12990" />
-            <p className="mt-1.5 font-ui text-xs text-gold-dim">
-              Dejalo vacío si todavía no querés vender este producto por Mercado Pago.
-            </p>
-          </div>
           <div>
             <label className={labelClass} htmlFor="amazonKindleUrl">Link Kindle (versión digital) en Amazon</label>
             <input id="amazonKindleUrl" className={inputClass} value={values.amazonKindleUrl}
@@ -427,7 +444,8 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
       </div>
 
       <ProductSeoSection
-        values={values}
+        // La lista de control SEO cuenta el precio en USD como "forma de compra" (usa el campo priceArs).
+        values={{ ...values, priceArs: values.priceArs ?? (values.priceUsd ? values.priceUsd : null) }}
         onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
       />
 
