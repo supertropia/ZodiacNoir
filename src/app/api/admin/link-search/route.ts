@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     ...articles.map((a) => ({
       type: "articulo" as const,
       title: a.title,
-      href: `/articulos/${a.slug}`,
+      href: `/blog/${a.slug}`,
     })),
     ...products.map((p) => ({
       type: "producto" as const,
