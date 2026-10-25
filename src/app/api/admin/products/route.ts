@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { normalizeSeoFields } from "@/lib/seo";
+import { formatUsdAmount, parseUsdInput } from "@/lib/pricing";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -19,15 +20,18 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       slug, title, description, priceLabel, lemonVariantId,
-      priceArs, amazonKindleUrl, amazonKindlePrice, amazonPaperbackUrl, amazonPaperbackPrice,
+      priceArs, priceUsd, kind, amazonKindleUrl, amazonKindlePrice, amazonPaperbackUrl, amazonPaperbackPrice,
       coverImage, coverImagePosition,
       heroImage, heroImagePosition,
       galleryImages, contentHighlights, testimonials, audienceText,
       salesCount, fileUrl, published,
     } = body;
 
-    if (!slug || !title || !description || !priceLabel) {
-      return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
+    const usd = parseUsdInput(priceUsd);
+    // Si no se escribió un texto de precio, se arma solo con el precio en USD.
+    const label = (typeof priceLabel === "string" ? priceLabel.trim() : "") || (usd ? formatUsdAmount(usd) : "");
+    if (!slug || !title || !description || !label) {
+      return NextResponse.json({ error: "Faltan campos obligatorios (revisa el título, el slug, la descripción y el precio)." }, { status: 400 });
     }
 
     const seo = normalizeSeoFields(body);
@@ -42,9 +46,11 @@ export async function POST(req: Request) {
 
     const product = await prisma.product.create({
       data: {
-        slug, title, description, priceLabel,
+        slug, title, description, priceLabel: label,
         lemonVariantId: lemonVariantId || null,
         priceArs: Number.isFinite(priceArs) ? priceArs : null,
+        priceUsd: usd,
+        kind: kind === "pdf" ? "pdf" : "book",
         amazonKindleUrl: amazonKindleUrl || null,
         amazonKindlePrice: amazonKindlePrice || null,
         amazonPaperbackUrl: amazonPaperbackUrl || null,
