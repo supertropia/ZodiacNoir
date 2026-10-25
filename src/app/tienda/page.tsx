@@ -9,6 +9,9 @@ import { toProductViewModel, type ProductViewModel } from "@/lib/store-products"
 import { serializeJsonLd } from "@/lib/seo";
 import { summarize } from "@/lib/product-seo";
 import { toPlainText } from "@/components/store/FormattedText";
+import { getUsdArsQuote } from "@/lib/exchange-rate";
+import { getPaypalVisibility } from "@/lib/paypal-access";
+import { FX_NOTE } from "@/lib/pricing";
 
 const SITE_URL = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
 
@@ -62,8 +65,12 @@ const FAQ: { q: string; a: string }[] = [
     a: "Apenas se confirma el pago, el botón de descarga aparece en la ficha del libro (si compraste con tu cuenta) y además te enviamos el enlace por correo. Si no lo ves en tu bandeja de entrada, revisa la carpeta de spam o correo no deseado.",
   },
   {
+    q: "¿En qué moneda están los precios?",
+    a: "Todos los precios están en dólares (USD), para que se mantengan estables. Si pagas con Mercado Pago, que cobra en pesos argentinos, convertimos el precio al dólar blue del día, con un pequeño margen por la variación hasta que el pago se acredita; ves el monto en pesos antes de pagar. Si pagas con PayPal, se cobra directamente en dólares.",
+  },
+  {
     q: "¿Puedo comprar desde fuera de Latinoamérica?",
-    a: "Sí. El PDF directo se paga con Mercado Pago, que funciona en Latinoamérica. Si estás en cualquier otra parte del mundo, puedes pedir el libro en Amazon, en versión Kindle o en papel; el envío y la entrega dependen de Amazon según tu ubicación.",
+    a: "Sí. El PDF directo se paga con Mercado Pago (Latinoamérica) o con PayPal, que funciona en todo el mundo. También puedes pedir el libro en Amazon, en versión Kindle o en papel; el envío y la entrega dependen de Amazon según tu ubicación.",
   },
   {
     q: "¿Qué diferencia hay entre el PDF, el Kindle y el libro físico?",
@@ -99,9 +106,16 @@ export default async function TiendaPage({
     })
   );
 
-  const viewModels: ProductViewModel[] = await Promise.all(
-    products.map((product) => toProductViewModel(product, email))
+  // Cotización del dólar (para mostrar el equivalente en pesos) y quién ve el botón de PayPal.
+  const quote = await getUsdArsQuote();
+  const paypal = await getPaypalVisibility();
+
+  const allViewModels: ProductViewModel[] = await Promise.all(
+    products.map((product) => toProductViewModel(product, email, "/tienda?compra=1", { fxRate: quote?.rate ?? null, paypal }))
   );
+  // Dos secciones: libros y e-books, y material PDF descargable (calendarios, cuadernos imprimibles…).
+  const viewModels = allViewModels.filter((p) => p.kind !== "pdf");
+  const pdfModels = allViewModels.filter((p) => p.kind === "pdf");
 
   // Datos estructurados (schema.org): le explican a Google que esta página es un catálogo de libros,
   // con el nombre, la descripción, la portada y el precio de cada uno.
@@ -136,12 +150,12 @@ export default async function TiendaPage({
               ? { image: product.coverImage ?? product.heroImage }
               : {}),
             brand: { "@type": "Brand", name: "Zodiac Noir" },
-            ...(product.priceArs
+            ...(product.priceUsd || product.priceArs
               ? {
                   offers: {
                     "@type": "Offer",
-                    price: product.priceArs,
-                    priceCurrency: "ARS",
+                    price: product.priceUsd ?? product.priceArs,
+                    priceCurrency: product.priceUsd ? "USD" : "ARS",
                     availability: "https://schema.org/InStock",
                     url: `${pageUrl}/${product.slug}`,
                   },
@@ -181,6 +195,9 @@ export default async function TiendaPage({
           <strong className="font-semibold text-gold-pale">Toca o haz clic en cualquier libro</strong> para ver su
           descripción completa, lo que incluye y para quién es. Puedes adquirirlo aquí mismo en PDF, con entrega
           inmediata, o pedirlo en Amazon desde cualquier parte del mundo, en Kindle o en libro físico.
+        </p>
+        <p className="mt-3 font-ui text-sm leading-relaxed text-gold-dim">
+          Todos los precios están en dólares (USD). {FX_NOTE} Con PayPal se cobra directamente en dólares.
         </p>
 
         <ul className="mt-5 flex flex-wrap gap-2.5 font-ui text-xs uppercase tracking-wide text-gold-pale">
@@ -235,9 +252,25 @@ export default async function TiendaPage({
             Todavía no hay productos cargados. Creá uno nuevo desde <code>/admin/productos/nuevo</code>.
           </div>
         ) : (
-          <ProductGrid products={viewModels} initialProductSlug={searchParams?.producto} />
+          <ProductGrid products={viewModels} initialProductSlug={searchParams?.producto} sectionId="libros" />
         )}
       </section>
+
+      {/* Material PDF descargable: calendarios, cuadernos imprimibles y similares */}
+      {pdfModels.length > 0 && (
+        <section aria-labelledby="pdf-titulo" className="mt-16">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <h2 id="pdf-titulo" className="font-display text-2xl text-gold-pale">
+              Material PDF descargable
+            </h2>
+            <p className="font-body text-base italic text-gold-dim">Calendarios, cuadernos imprimibles y más ↓</p>
+          </div>
+          <p className="mt-3 max-w-3xl font-body text-lg leading-relaxed text-gold-pale/80">
+            Material práctico para imprimir o usar en pantalla. Pago único y descarga inmediata.
+          </p>
+          <ProductGrid products={pdfModels} initialProductSlug={searchParams?.producto} sectionId="material-pdf" />
+        </section>
+      )}
 
       {/* Cómo conseguir los libros */}
       <section aria-labelledby="formas-titulo" className="mt-16">
@@ -251,7 +284,7 @@ export default async function TiendaPage({
             </svg>
             <h3 className="mt-3 font-display text-lg text-gold-pale">PDF directo en esta tienda</h3>
             <p className="mt-2 font-body text-lg leading-relaxed text-gold-pale/80">
-              Pago único con Mercado Pago, válido en Latinoamérica. Cuando se confirma el pago, descargas el
+              Pago único con Mercado Pago (Latinoamérica) o con PayPal. Cuando se confirma el pago, descargas el
               PDF al instante y también lo recibes por correo. Ideal si quieres empezar a leer hoy mismo.
             </p>
           </div>
@@ -311,10 +344,10 @@ export default async function TiendaPage({
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <Link
-            href="/articulos"
+            href="/blog"
             className="focus-ring rounded-full border border-gold/50 px-5 py-2.5 font-ui text-sm uppercase tracking-wide text-gold-pale transition hover:bg-gold/10"
           >
-            Ver artículos
+            Ver el blog
           </Link>
           <Link
             href="/membresia"
