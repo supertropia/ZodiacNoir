@@ -11,16 +11,16 @@ import { getReadingsEnabled } from "@/lib/site-settings";
 
 type NavEntry = { href: string; label: string; highlight?: boolean; mobileOnly?: boolean };
 
-// "Lecturas" va primero y resaltada: es el servicio central del sitio.
+// "Lecturas" va primero y resaltada: es el servicio central del sitio. "Membresía" también va resaltada.
 // "Sobre nosotros" queda solo en el menú del celular (en escritorio es accesible desde el pie de página
 // y no entra en la barra junto a los otros siete enlaces).
 const NAV: NavEntry[] = [
   { href: "/lecturas", label: "Lecturas", highlight: true },
-  { href: "/articulos", label: "Artículos" },
+  { href: "/blog", label: "Blog" },
   { href: "/signos", label: "Signos" },
   { href: "/efemerides", label: "Efemérides" },
   { href: "/tienda", label: "Tienda" },
-  { href: "/membresia", label: "Membresía" },
+  { href: "/membresia", label: "Membresía", highlight: true },
   { href: "/sobre-nosotros", label: "Sobre nosotros", mobileOnly: true },
 ];
 
