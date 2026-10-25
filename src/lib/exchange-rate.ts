@@ -7,8 +7,8 @@
 // Orden de fuentes:
 //   1. LECTURAS_USD_ARS_RATE (variable de entorno): si la cargas, se usa ese valor tal cual,
 //      sin margen. Sirve para fijar la cotización a mano o si las fuentes automáticas fallan.
-//   2. DolarApi.com — dólar oficial, precio de venta.
-//   3. Bluelytics — dólar oficial, precio de venta (respaldo).
+//   2. DolarApi.com — dólar BLUE, precio de venta.
+//   3. Bluelytics — dólar BLUE, precio de venta (respaldo).
 // Al valor automático se le suma un margen (LECTURAS_FX_MARGIN_PERCENT, 3 % por defecto) para
 // cubrir la variación del dólar entre que la persona ve el precio y que el pago se acredita.
 
@@ -40,14 +40,14 @@ async function fetchJson(url: string): Promise<unknown> {
 
 const SOURCES: { name: string; url: string; pick: (json: any) => unknown }[] = [
   {
-    name: "dolarapi.com (oficial, venta)",
-    url: "https://dolarapi.com/v1/dolares/oficial",
+    name: "dolarapi.com (blue, venta)",
+    url: "https://dolarapi.com/v1/dolares/blue",
     pick: (json) => json?.venta,
   },
   {
-    name: "bluelytics.com.ar (oficial, venta)",
+    name: "bluelytics.com.ar (blue, venta)",
     url: "https://api.bluelytics.com.ar/v2/latest",
-    pick: (json) => json?.oficial?.value_sell,
+    pick: (json) => json?.blue?.value_sell,
   },
 ];
 
