@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cancelPreapproval } from "@/lib/mercadopago";
+import { cancelPaypalSubscription } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,8 @@ export async function POST() {
     return NextResponse.json({ error: "No tenés una membresía activa." }, { status: 400 });
   }
 
-  if (subscription.provider !== "mercadopago" || !subscription.mercadoPagoPreapprovalId) {
+  const isPaypal = subscription.provider === "paypal" && Boolean(subscription.paypalSubscriptionId);
+  if (!isPaypal && (subscription.provider !== "mercadopago" || !subscription.mercadoPagoPreapprovalId)) {
     return NextResponse.json(
       {
         error:
@@ -31,7 +33,11 @@ export async function POST() {
   }
 
   try {
-    await cancelPreapproval(subscription.mercadoPagoPreapprovalId);
+    if (isPaypal) {
+      await cancelPaypalSubscription(subscription.paypalSubscriptionId!);
+    } else {
+      await cancelPreapproval(subscription.mercadoPagoPreapprovalId!);
+    }
     await prisma.subscription.update({
       where: { email },
       data: { status: "cancelled", endsAt: new Date() },
