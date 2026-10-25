@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
+import { formatUsdAmount, parseUsdInput } from "@/lib/pricing";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -16,14 +17,18 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { slug, name, description, priceLabel, interval, lemonVariantId, priceArs, featured, benefits } = body;
+    const { slug, name, description, priceLabel, interval, lemonVariantId, priceArs, priceUsd, featured, benefits } = body;
 
-    if (!slug || !name || !description || !priceLabel || !interval) {
+    const usd = parseUsdInput(priceUsd);
+    // Si no se escribió un texto de precio, se arma solo con el precio en USD.
+    const label =
+      (typeof priceLabel === "string" ? priceLabel.trim() : "") || (usd && interval ? `${formatUsdAmount(usd)} / ${interval}` : "");
+    if (!slug || !name || !description || !label || !interval) {
       return NextResponse.json({ error: "Faltan campos obligatorios." }, { status: 400 });
     }
-    if (!lemonVariantId && !Number.isFinite(priceArs)) {
+    if (!lemonVariantId && !usd && !Number.isFinite(priceArs)) {
       return NextResponse.json(
-        { error: "Configurá al menos un medio de pago: Precio en ARS o Variant ID de Lemon Squeezy." },
+        { error: "Configura al menos un medio de pago: Precio en USD o Variant ID de Lemon Squeezy." },
         { status: 400 }
       );
     }
@@ -35,9 +40,10 @@ export async function POST(req: Request) {
 
     const plan = await prisma.membershipPlan.create({
       data: {
-        slug, name, description, priceLabel, interval,
+        slug, name, description, priceLabel: label, interval,
         lemonVariantId: lemonVariantId || null,
         priceArs: Number.isFinite(priceArs) ? priceArs : null,
+        priceUsd: usd,
         featured: Boolean(featured),
         benefits: benefits || "",
       },
