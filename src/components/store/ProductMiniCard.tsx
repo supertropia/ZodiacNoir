@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatUsdAmount } from "@/lib/pricing";
 
 export type ProductCardData = {
   id: string;
@@ -6,6 +7,7 @@ export type ProductCardData = {
   title: string;
   description: string;
   priceArs: number | null;
+  priceUsd?: number | null;
   coverImage: string | null;
   coverImagePosition: number;
 };
@@ -51,7 +53,11 @@ export function ProductMiniCard({ product }: { product: ProductCardData }) {
         </p>
         <div className="mt-auto flex items-center justify-between pt-3 sm:pt-4">
           <span className="font-ui text-sm text-gold">
-            {product.priceArs ? `ARS ${product.priceArs.toLocaleString("es-AR")}` : ""}
+            {product.priceUsd
+              ? formatUsdAmount(product.priceUsd)
+              : product.priceArs
+                ? `ARS ${product.priceArs.toLocaleString("es-AR")}`
+                : ""}
           </span>
           <span className="hidden font-body text-sm italic text-gold-dim sm:block">Ver en la tienda ↗</span>
         </div>
