@@ -1,6 +1,7 @@
 import type { Subscription } from "@prisma/client";
 import { prisma } from "./prisma";
 import { getPreapproval } from "./mercadopago";
+import { getPaypalSubscription, mapPaypalSubscriptionStatus } from "./paypal";
 
 const ACTIVE_STATUSES = ["active", "on_trial"];
 
@@ -48,12 +49,50 @@ export async function syncPendingMercadoPagoSubscription(sub: Subscription): Pro
   }
 }
 
+/**
+ * Consulta a PayPal el estado real de una suscripción y lo guarda en nuestra base.
+ * Lo usan la vuelta desde PayPal, el aviso (webhook) y la verificación de suscripciones pendientes.
+ * Devuelve la suscripción actualizada, o null si no la conocemos.
+ */
+export async function syncPaypalSubscription(paypalSubscriptionId: string): Promise<Subscription | null> {
+  const known = await prisma.subscription.findUnique({ where: { paypalSubscriptionId } });
+  if (!known) return null;
+
+  const remote = await getPaypalSubscription(paypalSubscriptionId);
+  const status = mapPaypalSubscriptionStatus(remote.status);
+  const nextBilling = remote.billing_info?.next_billing_time ? new Date(remote.billing_info.next_billing_time) : null;
+
+  return prisma.subscription.update({
+    where: { id: known.id },
+    data: {
+      provider: "paypal",
+      status,
+      renewsAt: nextBilling ?? known.renewsAt,
+      endsAt: status === "cancelled" ? known.endsAt ?? new Date() : null,
+    },
+  });
+}
+
+/** Igual que syncPendingMercadoPagoSubscription, pero para suscripciones de PayPal. Nunca lanza error. */
+export async function syncPendingPaypalSubscription(sub: Subscription): Promise<Subscription> {
+  if (sub.provider !== "paypal" || !sub.paypalSubscriptionId) return sub;
+  if (sub.status !== "pending") return sub;
+  if (Date.now() - sub.updatedAt.getTime() > PENDING_SYNC_WINDOW_MS) return sub;
+
+  try {
+    return (await syncPaypalSubscription(sub.paypalSubscriptionId)) ?? sub;
+  } catch (error) {
+    console.error("No se pudo verificar la suscripción pendiente con PayPal:", error);
+    return sub;
+  }
+}
+
 /** True si el email tiene una membresía paga activa (o en prueba). */
 export async function hasActiveMembership(email?: string | null): Promise<boolean> {
   if (!email) return false;
   let sub = await prisma.subscription.findUnique({ where: { email } });
   if (sub && sub.status === "pending") {
-    sub = await syncPendingMercadoPagoSubscription(sub);
+    sub = sub.provider === "paypal" ? await syncPendingPaypalSubscription(sub) : await syncPendingMercadoPagoSubscription(sub);
   }
   return !!sub && ACTIVE_STATUSES.includes(sub.status);
 }
