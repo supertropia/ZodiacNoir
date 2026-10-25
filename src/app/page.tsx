@@ -68,7 +68,7 @@ export default async function HomePage() {
                 href="/tienda"
                 className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
               >
-                Tienda de e-books
+                Tienda
               </Link>
               <Link
                 href="/blog"
