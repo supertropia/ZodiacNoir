@@ -13,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/`, changeFrequency: "daily", priority: 1 },
     ...(readingsEnabled ? [{ url: `${siteUrl}/lecturas`, changeFrequency: "weekly" as const, priority: 0.9 }] : []),
-    { url: `${siteUrl}/articulos`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/blog`, changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/signos`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${siteUrl}/efemerides`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${siteUrl}/tienda`, changeFrequency: "weekly", priority: 0.9 },
@@ -37,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const articlePages: MetadataRoute.Sitemap = articles.map((article) => ({
-    url: `${siteUrl}/articulos/${article.slug}`,
+    url: `${siteUrl}/blog/${article.slug}`,
     lastModified: article.updatedAt,
     changeFrequency: "monthly",
     priority: 0.8,
