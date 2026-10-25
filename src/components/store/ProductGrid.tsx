@@ -4,15 +4,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AmazonPrice, ProductDetail } from "@/components/store/ProductDetail";
 import { toPlainText } from "@/components/store/FormattedText";
 import type { ProductViewModel } from "@/lib/store-products";
+import { formatUsdAmount } from "@/lib/pricing";
 
 export type { ProductViewModel } from "@/lib/store-products";
 
 export function ProductGrid({
   products,
   initialProductSlug,
+  sectionId = "libros",
 }: {
   products: ProductViewModel[];
   initialProductSlug?: string;
+  // Identifica la cuadrícula cuando hay más de una en la misma página (libros y material PDF).
+  sectionId?: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const detalleRef = useRef<HTMLDivElement>(null);
@@ -55,7 +59,7 @@ export function ProductGrid({
           const isOpen = openId === product.id;
           // Portada completa del libro: se prefiere la imagen alta (hero) y, si no existe, la de la tarjeta.
           const stageImage = product.heroImage ?? product.coverImage;
-          const hasPdf = Boolean(product.priceArs) || product.owned;
+          const hasPdf = Boolean(product.priceUsd) || Boolean(product.priceArs) || product.owned;
           return (
             <li key={product.id} className="flex">
               <div
@@ -105,7 +109,7 @@ export function ProductGrid({
                       type="button"
                       onClick={() => openLanding(product.id)}
                       aria-expanded={isOpen}
-                      aria-controls="ficha-producto"
+                      aria-controls={`ficha-${sectionId}`}
                       className="focus-ring text-left after:absolute after:inset-0 after:rounded-2xl"
                     >
                       {product.title}
@@ -118,7 +122,9 @@ export function ProductGrid({
 
                   <div className="mt-4 flex items-center justify-between gap-3 border-t border-gold/15 pt-3">
                     <span className="font-ui text-sm font-medium text-gold-pale">
-                      {product.priceArs ? (
+                      {product.priceUsd ? (
+                        formatUsdAmount(product.priceUsd)
+                      ) : product.priceArs ? (
                         `ARS ${product.priceArs.toLocaleString("es-AR")}`
                       ) : product.amazonKindlePrice ? (
                         <AmazonPrice value={product.amazonKindlePrice} />
@@ -139,7 +145,7 @@ export function ProductGrid({
 
       {/* Ficha completa compartida */}
       <div
-        id="ficha-producto"
+        id={`ficha-${sectionId}`}
         role="region"
         aria-label={openProduct ? `Ficha de ${openProduct.title}` : "Ficha del libro"}
         className={`grid scroll-mt-36 overflow-hidden rounded-2xl border border-gold/25 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 sm:scroll-mt-24 ${
