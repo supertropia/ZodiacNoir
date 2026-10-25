@@ -145,7 +145,11 @@ export async function sendReadingPaidEmails(order: ReadingOrder): Promise<void> 
                <p style="margin:0;white-space:pre-wrap;">${escapeHtml(order.about)}</p>`
             : ""
         }
-        <p style="margin-top:20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;">Correo: ${escapeHtml(order.email)} · Cobrado: ${escapeHtml(formatArs(order.priceArs))} (${escapeHtml(formatUsd(order.priceUsd))} a ${order.exchangeRate.toLocaleString("es-AR")} ARS por USD)</p>
+        <p style="margin-top:20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;">Correo: ${escapeHtml(order.email)} · Cobrado: ${
+          order.provider === "paypal"
+            ? `${escapeHtml(formatUsd(order.priceUsd))} con PayPal`
+            : `${escapeHtml(formatArs(order.priceArs))} (${escapeHtml(formatUsd(order.priceUsd))} a ${order.exchangeRate.toLocaleString("es-AR")} ARS por USD)`
+        }</p>
         <p><a href="${siteUrl}/admin/lecturas" style="color:#5B34B0;">Abrir el panel de lecturas</a></p>`
       ),
     });
