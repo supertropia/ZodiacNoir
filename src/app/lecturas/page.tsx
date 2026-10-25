@@ -7,6 +7,7 @@ import { getReadingsEnabled } from "@/lib/site-settings";
 import { ChartWheel } from "@/components/lecturas/ChartWheel";
 import { LecturasShop, type ShopService } from "@/components/lecturas/LecturasShop";
 import { getUsdArsQuote, usdToArs } from "@/lib/exchange-rate";
+import { getPaypalVisibility } from "@/lib/paypal-access";
 import { READING_DELIVERY_WINDOW, READING_SERVICES, getReadingService, type ReadingServiceKey } from "@/lib/lecturas";
 import { serializeJsonLd } from "@/lib/seo";
 
@@ -72,7 +73,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "¿Por qué el precio está en dólares si pago en pesos?",
-    a: "Los precios de las lecturas se fijan en dólares para que se mantengan estables en el tiempo. Mercado Pago cobra en pesos argentinos, así que al continuar convertimos el precio al dólar oficial del día más un pequeño margen por la variación hasta que el pago se acredita. Ves el monto exacto en pesos antes de pagar y no cambia después.",
+    a: "Los precios de las lecturas se fijan en dólares para que se mantengan estables en el tiempo. Mercado Pago cobra en pesos argentinos, así que al continuar convertimos el precio al dólar blue del día más un pequeño margen por la variación hasta que el pago se acredita. Ves el monto exacto en pesos antes de pagar y no cambia después. Si prefieres pagar en dólares, también puedes hacerlo con PayPal cuando esté disponible.",
   },
   {
     q: "¿Qué es una revolución solar?",
@@ -115,10 +116,10 @@ export default async function LecturasPage({
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
-            href="/articulos"
+            href="/blog"
             className="focus-ring rounded-full bg-gold px-6 py-3 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
           >
-            Explorar artículos
+            Explorar el blog
           </Link>
           <Link
             href="/efemerides"
@@ -132,6 +133,7 @@ export default async function LecturasPage({
   }
 
   const quote = await getUsdArsQuote();
+  const paypal = await getPaypalVisibility();
 
   const services: ShopService[] = READING_SERVICES.map((s) => ({
     key: s.key,
@@ -266,6 +268,7 @@ export default async function LecturasPage({
           todayIso={now.toISOString().slice(0, 10)}
           rateLabel={quote ? `1 USD = ARS ${Math.round(quote.rate).toLocaleString("es-AR")}` : null}
           paymentCancelled={searchParams?.pago === "error"}
+          paypal={paypal}
         />
       </section>
 
