@@ -5,6 +5,8 @@ import type { Product } from "@prisma/client";
 import { hasPurchased } from "@/lib/membership";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
 import { parseFaq, type FaqItem } from "@/lib/seo";
+import { estimateArs } from "@/lib/pricing";
+import type { PaypalVisibility } from "@/lib/paypal-access";
 
 export type ContentHighlight = { title: string; description: string };
 export type Testimonial = { name: string; stars: number; text: string; shared: number };
@@ -16,6 +18,14 @@ export type ProductViewModel = {
   description: string;
   priceLabel: string;
   priceArs: number | null;
+  /** Precio en dólares: es el que se publica. Si está vacío (productos viejos) se usa priceArs. */
+  priceUsd: number | null;
+  /** "book" (libro / e-book) o "pdf" (material PDF descargable). */
+  kind: string;
+  /** Precio en pesos al dólar blue de hoy (más el margen); null si no hay cotización. */
+  priceArsEstimate: number | null;
+  /** Quién ve el botón de PayPal: nadie ("hidden"), solo la administración ("preview") o todos ("public"). */
+  paypal: PaypalVisibility;
   amazonKindleUrl: string | null;
   amazonKindlePrice: string | null;
   amazonPaperbackUrl: string | null;
@@ -43,7 +53,8 @@ function asArray<T>(value: unknown): T[] {
 export async function toProductViewModel(
   product: Product,
   email: string | null,
-  redirectPath = "/tienda?compra=1"
+  redirectPath = "/tienda?compra=1",
+  extras: { fxRate?: number | null; paypal?: PaypalVisibility } = {}
 ): Promise<ProductViewModel> {
   const owned = await hasPurchased(email, product.id);
   const checkoutUrl = buildCheckoutUrl(product.lemonVariantId, {
@@ -58,6 +69,10 @@ export async function toProductViewModel(
     description: product.description,
     priceLabel: product.priceLabel,
     priceArs: product.priceArs,
+    priceUsd: product.priceUsd,
+    kind: product.kind,
+    priceArsEstimate: estimateArs(product.priceUsd, extras.fxRate),
+    paypal: extras.paypal ?? "hidden",
     amazonKindleUrl: product.amazonKindleUrl,
     amazonKindlePrice: product.amazonKindlePrice,
     amazonPaperbackUrl: product.amazonPaperbackUrl,
