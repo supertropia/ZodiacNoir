@@ -23,7 +23,7 @@ export async function Footer() {
             {readingsEnabled && (
               <li><Link href="/lecturas" className="hover:text-gold">Lecturas personalizadas</Link></li>
             )}
-            <li><Link href="/articulos" className="hover:text-gold">Artículos</Link></li>
+            <li><Link href="/blog" className="hover:text-gold">Blog</Link></li>
             <li><Link href="/signos" className="hover:text-gold">Signos</Link></li>
             <li><Link href="/efemerides" className="hover:text-gold">Efemérides</Link></li>
             <li><Link href="/tienda" className="hover:text-gold">Tienda</Link></li>
