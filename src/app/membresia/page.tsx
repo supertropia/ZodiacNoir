@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { hasActiveMembership } from "@/lib/membership";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
 import { formatPlanPrice } from "@/lib/plan-price";
+import { getUsdArsQuote, usdToArs } from "@/lib/exchange-rate";
+import { getPaypalVisibility } from "@/lib/paypal-access";
 import { MembershipCheckoutButton } from "@/components/membership/MembershipCheckoutButton";
 
 export const metadata = {
@@ -19,6 +21,8 @@ export default async function MembresiaPage() {
   const email = session?.user?.email ?? null;
   const isMember = await hasActiveMembership(email);
   const plans = await prisma.membershipPlan.findMany({ orderBy: { createdAt: "asc" } });
+  const paypal = await getPaypalVisibility();
+  const quote = await getUsdArsQuote().catch(() => null);
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-16">
@@ -73,8 +77,14 @@ export default async function MembresiaPage() {
               </ul>
 
               <div className="mt-6 space-y-3">
-                {plan.priceArs ? (
-                  <MembershipCheckoutButton planId={plan.id} isLoggedIn={Boolean(email)} />
+                {plan.priceUsd || plan.priceArs ? (
+                  <MembershipCheckoutButton
+                    planId={plan.id}
+                    isLoggedIn={Boolean(email)}
+                    paypal={paypal}
+                    arsEstimate={plan.priceUsd && quote ? usdToArs(plan.priceUsd, quote.rate) : null}
+                    canPayWithMercadoPago={Boolean(plan.priceArs || quote)}
+                  />
                 ) : null}
 
                 {lemonUrl ? (
@@ -83,7 +93,7 @@ export default async function MembresiaPage() {
                   </a>
                 ) : null}
 
-                {!plan.priceArs && !lemonUrl ? (
+                {!plan.priceArs && !plan.priceUsd && !lemonUrl ? (
                   <p className="font-ui text-xs text-gold-dim">
                     Este plan todavía no tiene un medio de pago configurado.
                   </p>
