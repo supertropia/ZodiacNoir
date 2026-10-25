@@ -21,6 +21,13 @@ export default async function HomePage() {
     })
   );
   const [featured, ...rest] = articles;
+  // Último tránsito semanal publicado: si no hay ninguno, la sección no se muestra.
+  const transit = await safeQuery(() =>
+    prisma.article.findFirst({
+      where: { ...livePublicationFilter(), category: "transitos-semanales" },
+      orderBy: { publishedAt: "desc" },
+    })
+  );
   // Las lecturas solo se muestran en la portada cuando se publican desde el panel.
   const readingsEnabled = await getReadingsEnabled();
 
@@ -45,7 +52,7 @@ export default async function HomePage() {
               Lunaciones, eclipses y aspectos planetarios explicados por astrólogos y tarotistas
               en ejercicio — sin fórmulas genéricas ni horóscopos de relleno.
             </p>
-            {/* Orden por importancia: tienda, artículos, membresía y, al final, efemérides.
+            {/* Orden por importancia: tienda, blog, membresía y, al final, efemérides.
                 En celular los botones ocupan todo el ancho (mismo tamaño, fáciles de tocar);
                 en pantallas más grandes forman una grilla de 2 x 2 prolija. */}
             <div className="mt-9 grid gap-3 sm:max-w-xl sm:grid-cols-2">
@@ -64,16 +71,16 @@ export default async function HomePage() {
                 Tienda de e-books
               </Link>
               <Link
-                href="/articulos"
+                href="/blog"
                 className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
               >
-                Explorar artículos
+                Explorar el blog
               </Link>
               <Link
                 href="/membresia"
                 className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
               >
-                Súmate a la membresía
+                Sumate a la membresía
               </Link>
               <Link
                 href="/efemerides"
@@ -133,6 +140,39 @@ export default async function HomePage() {
       </>
       )}
 
+      {/* Tránsitos de la semana: solo si hay uno publicado */}
+      {transit && (
+        <>
+          <section className="mx-auto max-w-6xl px-5 py-14" aria-labelledby="home-transitos">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Cada semana</p>
+                <h2 id="home-transitos" className="mt-1 font-display text-2xl text-gold-pale">
+                  Tránsitos de la semana
+                </h2>
+              </div>
+              <Link
+                href="/blog?categoria=transitos-semanales"
+                className="font-ui text-sm text-gold hover:text-gold-bright"
+              >
+                Ver todos →
+              </Link>
+            </div>
+            <div className="grid items-center gap-8 md:grid-cols-2">
+              <ArticleCard article={transit} />
+              <p className="font-body text-xl leading-relaxed text-gold-pale/85">
+                Qué se mueve en el cielo esta semana y cómo se vive: lunaciones, aspectos y estaciones
+                planetarias, explicados día por día.
+              </p>
+            </div>
+          </section>
+
+          <div className="mx-auto max-w-6xl px-5">
+            <div className="gold-line" />
+          </div>
+        </>
+      )}
+
       {/* Destacado + próximo evento */}
       <section className="mx-auto max-w-6xl px-5 py-16">
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
@@ -146,15 +186,34 @@ export default async function HomePage() {
       {/* Grid de artículos recientes */}
       <section className="mx-auto max-w-6xl px-5 py-6">
         <div className="mb-8 flex items-end justify-between">
-          <h2 className="font-display text-2xl text-gold-pale">Últimos artículos</h2>
-          <Link href="/articulos" className="font-ui text-sm text-gold hover:text-gold-bright">
-            Ver todos →
+          <h2 className="font-display text-2xl text-gold-pale">Lo último del blog</h2>
+          <Link href="/blog" className="font-ui text-sm text-gold hover:text-gold-bright">
+            Ver todo el blog →
           </Link>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rest.map((a) => (
             <ArticleCard key={a.slug} article={a} />
           ))}
+        </div>
+      </section>
+
+      {/* Membresía: invitación destacada */}
+      <section className="mx-auto max-w-6xl px-5 py-14" aria-labelledby="home-membresia">
+        <div className="rounded-3xl border-2 border-gold bg-gold/10 px-8 py-12 text-center sm:px-16">
+          <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Membresía</p>
+          <h2 id="home-membresia" className="mx-auto mt-3 max-w-xl font-display text-3xl text-gold-pale sm:text-4xl">
+            Leé el cielo completo
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg font-body text-xl leading-relaxed text-gold-pale/85">
+            Artículos premium, efemérides completas y el boletín quincenal incluido, todo en un mismo lugar.
+          </p>
+          <Link
+            href="/membresia"
+            className="focus-ring mt-8 inline-block rounded-full bg-gold px-9 py-3.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
+          >
+            Conocer la membresía
+          </Link>
         </div>
       </section>
 
