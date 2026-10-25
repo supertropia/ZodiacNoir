@@ -14,6 +14,7 @@ import {
   getReadingService,
 } from "./lecturas";
 import { getSiteUrl } from "./lecturas-mp";
+import { CONTACT_EMAIL } from "./site";
 
 function escapeHtml(value: string): string {
   return value
@@ -115,7 +116,7 @@ export async function sendReadingPaidEmails(order: ReadingOrder): Promise<void> 
 
   await sendEmail({
     to: order.email,
-    replyTo: contactEmail || undefined,
+    replyTo: CONTACT_EMAIL,
     subject: `Recibimos tu pago: tu ${serviceName(order).toLowerCase()} llega en un plazo de ${READING_DELIVERY_WINDOW}`,
     html: layout(
       `Gracias, ${escapeHtml(firstName(order))}. Ya estamos con tu lectura`,
@@ -158,7 +159,7 @@ export async function sendReadingDeliveredEmail(order: ReadingOrder): Promise<bo
 
   return sendEmail({
     to: order.email,
-    replyTo: process.env.CONTACT_TO_EMAIL || undefined,
+    replyTo: CONTACT_EMAIL,
     subject: `Tu ${serviceName(order).toLowerCase()} está lista`,
     html: layout(
       `${escapeHtml(firstName(order))}, tu lectura está lista`,
