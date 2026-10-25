@@ -122,8 +122,8 @@ export default async function LecturaGraciasPage({
           <div className="mt-8 rounded-2xl border border-gold/30 bg-noir-surface/50 p-7 text-center" role="status">
             <p className="font-body text-lg leading-relaxed text-gold-pale/90">
               {searchParams?.estado === "pendiente"
-                ? "Tu pago está pendiente de acreditación en Mercado Pago. Puede tardar un poco según el medio de pago que usaste."
-                : "Mercado Pago nos avisa apenas el pago se acredita; suele tardar unos segundos."}{" "}
+                ? "Tu pago está pendiente de acreditación. Puede tardar un poco según el medio de pago que usaste."
+                : "Tu medio de pago nos avisa apenas el pago se acredita; suele tardar unos segundos."}{" "}
               Esta página se actualiza sola. No hace falta que hagas nada más.
             </p>
             <p className="mt-4 font-ui text-xs text-gold-dim">
