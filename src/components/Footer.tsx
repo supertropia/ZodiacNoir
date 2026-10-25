@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SocialLinks } from "./SocialLinks";
 import { getReadingsEnabled } from "@/lib/site-settings";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 export async function Footer() {
   const readingsEnabled = await getReadingsEnabled();
@@ -34,6 +35,9 @@ export async function Footer() {
         <div className="font-ui text-sm text-gold-pale/90">
           <p className="mb-3 uppercase tracking-wide text-gold-dim">Seguinos</p>
           <SocialLinks variant="footer" />
+          <a href={`mailto:${CONTACT_EMAIL}`} className="mt-4 inline-block hover:text-gold">
+            {CONTACT_EMAIL}
+          </a>
         </div>
       </div>
       <div className="gold-line" />
