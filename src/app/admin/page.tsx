@@ -45,7 +45,7 @@ function ArticleRow({
           <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">{article.category}</span>
         </div>
         <h3 className="font-display text-lg text-gold-pale">{article.title}</h3>
-        <p className="font-ui text-xs text-gold-dim">/articulos/{article.slug}</p>
+        <p className="font-ui text-xs text-gold-dim">/blog/{article.slug}</p>
         {status !== "draft" && article.publishedAt && (
           <p className="mt-1 font-ui text-xs text-gold-dim">
             {status === "scheduled" ? "Se publica: " : "Publicado: "}
