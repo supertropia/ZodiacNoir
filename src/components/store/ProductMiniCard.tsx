@@ -1,85 +1,61 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { ArticleCard } from "@/components/ArticleCard";
-import { prisma, safeQuery } from "@/lib/prisma";
-import { livePublicationFilter } from "@/lib/publication";
-import { CATEGORIES } from "@/lib/categories";
 
-export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = {
-  title: "Blog",
-  description: "El blog de Zodiac Noir: astrología, tarot, tránsitos semanales y psicología astrológica.",
-  alternates: { canonical: "/blog" },
+export type ProductCardData = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  priceArs: number | null;
+  coverImage: string | null;
+  coverImagePosition: number;
 };
 
-function FilterChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`focus-ring rounded-full border px-4 py-1.5 font-ui text-xs uppercase tracking-wide transition ${
-        active
-          ? "border-gold bg-gold text-noir-bg"
-          : "border-gold/30 text-gold hover:border-gold hover:bg-gold/10"
-      }`}
-    >
-      {children}
-    </Link>
-  );
+/** Primer párrafo de la descripción, cortado en una palabra entera y cerrado con puntos suspensivos. */
+function shortDescription(text: string, max = 140): string {
+  const firstParagraph =
+    text
+      .split(/\n+/)
+      .map((p) => p.trim())
+      .find(Boolean) ?? "";
+  if (firstParagraph.length <= max) return firstParagraph;
+  const cut = firstParagraph.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  const clean = (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).trimEnd().replace(/[.,;:—-]+$/, "");
+  return `${clean}…`;
 }
 
-export default async function BlogPage({
-  searchParams,
-}: {
-  searchParams: { categoria?: string | string[] };
-}) {
-  const requested = Array.isArray(searchParams.categoria) ? searchParams.categoria[0] : searchParams.categoria;
-  // Solo se aceptan categorías que existen; cualquier otro valor equivale a "Todos".
-  const selected = CATEGORIES.find((c) => c.value === requested);
-
-  const articles = await safeQuery(() =>
-    prisma.article.findMany({
-      where: selected
-        ? { ...livePublicationFilter(), category: selected.value }
-        : livePublicationFilter(),
-      orderBy: { publishedAt: "desc" },
-    })
-  );
-
+export function ProductMiniCard({ product }: { product: ProductCardData }) {
   return (
-    <section className="mx-auto max-w-6xl px-5 py-16">
-      <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Archivo</p>
-      <h1 className="mt-3 font-display text-4xl text-gold-pale">Blog</h1>
-      <p className="mt-4 max-w-2xl font-body text-lg text-gold-pale/80">
-        Cada texto está firmado y revisado por un especialista en ejercicio. Usá el buscador del
-        encabezado para encontrar un tema puntual.
-      </p>
-
-      <nav aria-label="Filtrar por categoría" className="mt-8 flex flex-wrap gap-2">
-        <FilterChip href="/blog" active={!selected}>
-          Todos
-        </FilterChip>
-        {CATEGORIES.map((c) => (
-          <FilterChip key={c.value} href={`/blog?categoria=${c.value}`} active={selected?.value === c.value}>
-            {c.label}
-          </FilterChip>
-        ))}
-      </nav>
-
-      {articles.length === 0 ? (
-        <p className="mt-12 font-body text-lg text-gold-dim">
-          {selected
-            ? `Todavía no hay publicaciones en «${selected.label}».`
-            : "Todavía no hay publicaciones."}
-        </p>
-      ) : (
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((a) => (
-            <ArticleCard key={a.slug} article={a} />
-          ))}
+    <Link
+      href={`/tienda/${product.slug}`}
+      className="group flex h-full flex-row overflow-hidden rounded-2xl border border-gold/15 bg-noir-surface/40 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:bg-noir-surface hover:shadow-xl hover:shadow-black/30 sm:flex-col"
+    >
+      {product.coverImage && (
+        <div className="flex h-full w-24 shrink-0 items-center justify-center bg-noir-bg sm:h-44 sm:w-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={product.coverImage}
+            alt=""
+            className="h-full w-full object-contain"
+            style={{ objectPosition: `center ${product.coverImagePosition}%` }}
+          />
         </div>
       )}
-    </section>
+      <div className="flex flex-1 flex-col p-4 sm:p-6">
+        <p className="hidden font-ui text-xs uppercase tracking-wide text-gold-dim sm:block">Material relacionado</p>
+        <h3 className="font-display text-base leading-snug text-gold-pale group-hover:text-gold sm:mt-2 sm:text-xl [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box] overflow-hidden">
+          {product.title}
+        </h3>
+        <p className="mt-2 hidden font-body text-sm text-gold-pale/75 sm:block">
+          {shortDescription(product.description)}
+        </p>
+        <div className="mt-auto flex items-center justify-between pt-3 sm:pt-4">
+          <span className="font-ui text-sm text-gold">
+            {product.priceArs ? `ARS ${product.priceArs.toLocaleString("es-AR")}` : ""}
+          </span>
+          <span className="hidden font-body text-sm italic text-gold-dim sm:block">Ver en la tienda ↗</span>
+        </div>
+      </div>
+    </Link>
   );
 }
