@@ -76,6 +76,13 @@ model MembershipPlan {
   // Precio en ARS para cobrar la suscripción con Mercado Pago (Suscripciones/Preapproval).
   // Dejalo vacío si este plan solo se vende por Lemon Squeezy.
   priceArs       Int?
+  // Precio en dólares (USD). Es el precio que se publica; al cobrar con Mercado Pago se convierte
+  // a pesos al dólar blue + margen, y con PayPal se cobra directamente en dólares.
+  priceUsd       Float?
+  // Plan de facturación creado en PayPal (se crea solo la primera vez que alguien paga con PayPal)
+  // y el precio en USD con el que se creó: si cambia el precio, se crea un plan nuevo.
+  paypalPlanId   String?
+  paypalPlanUsd  Float?
   featured       Boolean        @default(false)
   benefits       String
   createdAt      DateTime       @default(now())
@@ -91,6 +98,8 @@ model Subscription {
   lemonCustomerId          String?
   // ID de la suscripción (preapproval) en Mercado Pago.
   mercadoPagoPreapprovalId String?         @unique
+  // ID de la suscripción en PayPal (empieza con "I-").
+  paypalSubscriptionId     String?         @unique
   renewsAt                 DateTime?
   endsAt                   DateTime?
   plan                     MembershipPlan? @relation(fields: [planId], references: [id])
@@ -106,6 +115,11 @@ model Product {
   description          String
   priceLabel           String
   priceArs             Int?
+  // Precio en dólares (USD): es el que se publica en la tienda. Mercado Pago lo cobra en pesos
+  // (dólar blue + margen) y PayPal en dólares. Si está vacío se usa priceArs (productos viejos).
+  priceUsd             Float?
+  // "book" = libro / e-book · "pdf" = material PDF descargable (calendarios, cuadernos imprimibles…)
+  kind                 String     @default("book")
   amazonKindleUrl      String?
   amazonKindlePrice    String?
   amazonPaperbackUrl   String?
@@ -150,6 +164,8 @@ model Purchase {
   provider             String   @default("lemonsqueezy")
   lemonOrderId         String?  @unique
   mercadoPagoPaymentId String?  @unique
+  // ID de la orden en PayPal (cuando se pagó con PayPal).
+  paypalOrderId        String?  @unique
   status               String
   createdAt            DateTime @default(now())
 
@@ -181,9 +197,13 @@ model ReadingOrder {
   solarYear            Int?
   solarPlace           String?
   priceUsd             Int
+  // "mercadopago" (cobro en pesos) o "paypal" (cobro en dólares). En los pedidos de PayPal
+  // exchangeRate y priceArs quedan en 0, porque no hay conversión.
+  provider             String    @default("mercadopago")
   exchangeRate         Float
   priceArs             Int
   mercadoPagoPaymentId String?   @unique
+  paypalOrderId        String?   @unique
   paidAt               DateTime?
   // Fecha límite de entrega: momento del pago + horas de entrega (READING_DELIVERY_HOURS).
   deliverBy            DateTime?
