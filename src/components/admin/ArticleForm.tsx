@@ -497,7 +497,7 @@ export function ArticleForm({
 
       <div>
         <label className={labelClass} htmlFor="slug">
-          Slug (URL: /articulos/{values.slug || "…"})
+          Slug (URL: /blog/{values.slug || "…"})
         </label>
         <input
           id="slug"
@@ -1062,7 +1062,7 @@ function GooglePreview({ slug, title, description }: { slug: string; title: stri
         Vista previa · Así se vería en Google
       </p>
       <p className="truncate font-ui text-sm text-[#4d5156] dark:text-gold-dim">
-        zodiacnoirweb.com › articulos › {slug || "…"}
+        zodiacnoirweb.com › blog › {slug || "…"}
       </p>
       <p className="mt-1 font-ui text-xl leading-snug text-[#1a0dab] dark:text-[#8AB4F8]">
         {shownTitle || "Título del artículo"}
