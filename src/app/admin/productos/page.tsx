@@ -4,6 +4,8 @@ import { getStoreViewStats, productTarget, STORE_PAGE_TARGET } from "@/lib/store
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { CopyProductLinkButton } from "@/components/admin/CopyProductLinkButton";
 import { TogglePublishProductButton } from "@/components/admin/TogglePublishProductButton";
+import { ConvertPricesToUsdButton } from "@/components/admin/ConvertPricesToUsdButton";
+import { formatUsdAmount } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,8 @@ export default async function AdminProductsPage() {
           + Nuevo producto
         </Link>
       </div>
+
+      <ConvertPricesToUsdButton />
 
       {/* Visitas: la página /tienda y cada libro (se cuenta una vez por visitante y pestaña; tus visitas no suman) */}
       <section className="mb-8 rounded-xl border border-gold/15 bg-noir-surface/40 p-5">
@@ -57,7 +61,7 @@ export default async function AdminProductsPage() {
                   {p.published ? "Publicado" : "Borrador"}
                 </span>
               </div>
-              <h3 className="font-display text-lg text-gold-pale">{p.title} · {p.priceLabel}</h3>
+              <h3 className="font-display text-lg text-gold-pale">{p.title} · {p.priceUsd ? formatUsdAmount(p.priceUsd) : p.priceLabel}</h3>
               <p className="font-ui text-xs text-gold-dim">variant: {p.lemonVariantId} {p.fileUrl ? "· PDF cargado" : "· falta PDF"}</p>
               {p.published && (
                 <p className="mt-1 font-ui text-xs text-gold-pale/80">
