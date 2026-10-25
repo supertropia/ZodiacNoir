@@ -81,11 +81,12 @@ export default function TerminosPage() {
             </li>
             <li>
               <strong>Precio y pago.</strong> Los precios se publican en dólares estadounidenses
-              (USD). El pago se realiza con Mercado Pago en pesos argentinos: al continuar,
-              convertimos el precio al dólar oficial del día con un pequeño margen por la variación
+              (USD). El pago puede realizarse con Mercado Pago, en pesos argentinos: al continuar,
+              convertimos el precio al dólar blue del día con un pequeño margen por la variación
               hasta la acreditación del pago. Ves el monto exacto en pesos antes de pagar y no
-              cambia después. Las comisiones del medio de pago que correspondan a tu medio de pago
-              son ajenas al sitio.
+              cambia después. También puede ofrecerse el pago con PayPal, que se cobra directamente
+              en dólares, sin conversión. Las comisiones del medio de pago que correspondan a tu
+              medio de pago son ajenas al sitio.
             </li>
 
             <li>
