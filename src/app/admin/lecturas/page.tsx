@@ -76,12 +76,17 @@ function OrderCard({ order, now }: { order: Order; now: Date }) {
         <Row label="Profundizar" value={getFocusLabel(order.focus)} />
         <Row
           label="Pago"
-          value={`${formatUsd(order.priceUsd)} = ${formatArs(order.priceArs)} (cotización ${order.exchangeRate.toLocaleString("es-AR", { maximumFractionDigits: 2 })})`}
+          value={
+            order.provider === "paypal"
+              ? `${formatUsd(order.priceUsd)} con PayPal`
+              : `${formatUsd(order.priceUsd)} = ${formatArs(order.priceArs)} (cotización ${order.exchangeRate.toLocaleString("es-AR", { maximumFractionDigits: 2 })})`
+          }
         />
         {order.paidAt && <Row label="Pagado" value={formatArgentinaDateTime(order.paidAt)} />}
         {order.deliverBy && order.status === "paid" && <Row label="Entregar antes de" value={formatArgentinaDateTime(order.deliverBy)} />}
         {order.deliveredAt && <Row label="Entregado" value={formatArgentinaDateTime(order.deliveredAt)} />}
         {order.mercadoPagoPaymentId && <Row label="Pago en MP" value={order.mercadoPagoPaymentId} />}
+        {order.paypalOrderId && <Row label="Orden en PayPal" value={order.paypalOrderId} />}
       </dl>
 
       {order.about && (
