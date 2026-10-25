@@ -10,6 +10,7 @@ export const CATEGORIES = [
   { value: "tarot", label: "Tarot" },
   { value: "psicologia-astrologica", label: "Psicología astrológica" },
   { value: "astrologia-mundial", label: "Astrología mundial" },
+  { value: "transitos-semanales", label: "Tránsitos semanales" },
 ] as const;
 
 export const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
