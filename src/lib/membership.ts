@@ -2,6 +2,7 @@ import type { Subscription } from "@prisma/client";
 import { prisma } from "./prisma";
 import { getPreapproval } from "./mercadopago";
 import { getPaypalSubscription, mapPaypalSubscriptionStatus } from "./paypal";
+import { becameActive, sendSaleAlert } from "./sale-alert";
 
 const ACTIVE_STATUSES = ["active", "on_trial"];
 
@@ -16,6 +17,24 @@ const PENDING_SYNC_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 export function mapPreapprovalStatus(status: string): string {
   if (status === "authorized") return "active";
   return status; // "pending" | "paused" | "cancelled"
+}
+
+/**
+ * Avisa por correo a Zodiac Noir cuando una membresía pasa a estar activa por primera vez.
+ * Nunca lanza error.
+ */
+export async function notifyMembershipActivated(
+  sub: { email: string; provider: string; planId: string | null },
+  previousStatus: string | null | undefined,
+  nextStatus: string
+): Promise<void> {
+  try {
+    if (!becameActive(previousStatus, nextStatus)) return;
+    const plan = sub.planId ? await prisma.membershipPlan.findUnique({ where: { id: sub.planId } }) : null;
+    await sendSaleAlert({ kind: "membresía", title: plan?.name ?? "Membresía", buyer: sub.email, provider: sub.provider });
+  } catch (error) {
+    console.error("No se pudo avisar de la nueva membresía:", error);
+  }
 }
 
 /**
@@ -35,7 +54,7 @@ export async function syncPendingMercadoPagoSubscription(sub: Subscription): Pro
     const status = mapPreapprovalStatus(preapproval.status);
     if (status === sub.status) return sub;
 
-    return await prisma.subscription.update({
+    const updated = await prisma.subscription.update({
       where: { id: sub.id },
       data: {
         status,
@@ -43,6 +62,8 @@ export async function syncPendingMercadoPagoSubscription(sub: Subscription): Pro
         endsAt: status === "cancelled" ? new Date() : null,
       },
     });
+    await notifyMembershipActivated(updated, sub.status, status);
+    return updated;
   } catch (error) {
     console.error("No se pudo verificar la suscripción pendiente con Mercado Pago:", error);
     return sub;
@@ -62,7 +83,7 @@ export async function syncPaypalSubscription(paypalSubscriptionId: string): Prom
   const status = mapPaypalSubscriptionStatus(remote.status);
   const nextBilling = remote.billing_info?.next_billing_time ? new Date(remote.billing_info.next_billing_time) : null;
 
-  return prisma.subscription.update({
+  const updated = await prisma.subscription.update({
     where: { id: known.id },
     data: {
       provider: "paypal",
@@ -71,6 +92,8 @@ export async function syncPaypalSubscription(paypalSubscriptionId: string): Prom
       endsAt: status === "cancelled" ? known.endsAt ?? new Date() : null,
     },
   });
+  await notifyMembershipActivated(updated, known.status, status);
+  return updated;
 }
 
 /** Igual que syncPendingMercadoPagoSubscription, pero para suscripciones de PayPal. Nunca lanza error. */
