@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { ShareButtons } from "@/components/ShareButtons";
 import { FormattedText } from "@/components/store/FormattedText";
 import { StoreViewTracker } from "@/components/store/StoreViewTracker";
+import { ProductVideo } from "@/components/store/ProductVideo";
 import type { ProductViewModel } from "@/lib/store-products";
 import { PaypalButton } from "@/components/PaypalButton";
 import { FX_NOTE, formatArsAmount, formatUsdAmount } from "@/lib/pricing";
@@ -436,6 +437,13 @@ export function ProductDetail({
           </div>
         </div>
       </div>
+
+      {product.videoUrl && (
+        <section className={SECTION_CLASS}>
+          <SectionTag className={SECTION_TITLE_CLASS}>Mira la presentación</SectionTag>
+          <ProductVideo src={product.videoUrl} title={product.title} />
+        </section>
+      )}
 
       {product.audienceText && (
         <section className={SECTION_CLASS}>
