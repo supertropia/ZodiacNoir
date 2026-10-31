@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NewsletterComposer } from "@/components/admin/NewsletterComposer";
+import { SubscribersTable, type SubscriberRow } from "@/components/admin/SubscribersTable";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +22,14 @@ function sourceLabel(source: string): string {
 // Plan gratuito de Resend: 100 correos por día. Con más suscriptores hay que pasar al plan Pro.
 const FREE_DAILY_LIMIT = 100;
 
+// Cuántos suscriptores se cargan en la lista (los más recientes primero).
+const LIST_LIMIT = 5000;
+
 export default async function AdminNewsletterPage() {
   let active = 0;
   let unsubscribed = 0;
   let sources: { source: string; total: number; recent: number }[] = [];
+  let rows: SubscriberRow[] = [];
   try {
     [active, unsubscribed] = await Promise.all([
       prisma.subscriber.count({ where: { unsubscribedAt: null } }),
@@ -45,6 +50,18 @@ export default async function AdminNewsletterPage() {
     sources = byTotal
       .map((r) => ({ source: r.source ?? "", total: r._count._all, recent: recentBySource.get(r.source ?? "") ?? 0 }))
       .sort((a, b) => b.total - a.total);
+
+    const list = await prisma.subscriber.findMany({
+      orderBy: { createdAt: "desc" },
+      take: LIST_LIMIT,
+      select: { email: true, createdAt: true, unsubscribedAt: true, source: true },
+    });
+    rows = list.map((s) => ({
+      email: s.email,
+      createdAt: s.createdAt.toISOString(),
+      unsubscribedAt: s.unsubscribedAt ? s.unsubscribedAt.toISOString() : null,
+      sourceLabel: sourceLabel(s.source ?? ""),
+    }));
   } catch {
     // si falla la base de datos, se muestra en cero
   }
@@ -94,6 +111,8 @@ export default async function AdminNewsletterPage() {
           </div>
         )}
       </section>
+
+      <SubscribersTable rows={rows} truncated={active + unsubscribed > rows.length} />
 
       <NewsletterComposer active={active} />
     </div>
