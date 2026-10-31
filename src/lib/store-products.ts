@@ -43,6 +43,8 @@ export type ProductViewModel = {
   salesCount: number | null;
   owned: boolean;
   fileUrl: string | null;
+  /** Video de presentación (público, lo ve cualquier visitante). */
+  videoUrl: string | null;
   checkoutUrl: string | null;
 };
 
@@ -91,6 +93,7 @@ export async function toProductViewModel(
     owned,
     // El PDF solo se entrega a quien ya lo compró.
     fileUrl: owned ? product.fileUrl : null,
+    videoUrl: product.videoUrl,
     checkoutUrl,
   };
 }
