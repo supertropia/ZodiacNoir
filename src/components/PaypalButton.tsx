@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PaypalVisibility } from "@/lib/paypal-access";
+import { BrandLabel } from "@/components/PaymentBrand";
 
 // Botón amarillo de PayPal. Envía el pedido al servidor, que crea el pago en PayPal y devuelve la
 // dirección a la que hay que llevar a la persona para aprobarlo. En modo "preview" solo lo ve la
@@ -58,7 +59,7 @@ export function PaypalButton({
   return (
     <div>
       <button type="button" disabled={loading} onClick={onClick} className={className ?? PAYPAL_BUTTON_CLASS}>
-        {loading ? loadingLabel : label}
+        <BrandLabel brand="paypal">{loading ? loadingLabel : label}</BrandLabel>
       </button>
       {visibility === "preview" && <PreviewTag />}
       {error && (
