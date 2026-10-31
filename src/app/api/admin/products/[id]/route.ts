@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 import { normalizeSeoFields } from "@/lib/seo";
 import { formatUsdAmount, parseUsdInput } from "@/lib/pricing";
+import { parseOptionalUrl } from "@/lib/media";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await requireAdminSession();
@@ -25,7 +26,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       coverImage, coverImagePosition,
       heroImage, heroImagePosition,
       galleryImages, contentHighlights, testimonials, audienceText,
-      salesCount, fileUrl, published,
+      salesCount, fileUrl, videoUrl, published,
     } = body;
 
     const usd = parseUsdInput(priceUsd);
@@ -38,6 +39,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const seo = normalizeSeoFields(body);
     if (!seo.ok) {
       return NextResponse.json({ error: seo.error }, { status: 400 });
+    }
+
+    const video = parseOptionalUrl(videoUrl);
+    if (!video.ok) {
+      return NextResponse.json({ error: "La dirección del video no es válida." }, { status: 400 });
     }
 
     const current = await prisma.product.findUnique({ where: { id: params.id } });
@@ -70,6 +76,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         audienceText: audienceText || null,
         salesCount: Number.isFinite(salesCount) ? salesCount : null,
         fileUrl: fileUrl || null,
+        ...(videoUrl === undefined ? {} : { videoUrl: video.url }),
         ...seo.data,
         published: Boolean(published),
       },
