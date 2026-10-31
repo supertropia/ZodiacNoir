@@ -13,6 +13,7 @@ export default async function EditProductPage({ params }: { params: { id: string
     heroImage: product.heroImage ?? "",
     audienceText: product.audienceText ?? "",
     fileUrl: product.fileUrl ?? "",
+    videoUrl: product.videoUrl ?? "",
     amazonKindleUrl: product.amazonKindleUrl ?? "",
     amazonKindlePrice: product.amazonKindlePrice ?? "",
     amazonPaperbackUrl: product.amazonPaperbackUrl ?? "",
