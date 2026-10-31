@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { PAYPAL_BUTTON_CLASS, PreviewTag } from "@/components/PaypalButton";
+import { BrandLabel, MERCADOPAGO_BUTTON_CLASS } from "@/components/PaymentBrand";
 import type { PaypalVisibility } from "@/lib/paypal-access";
 import {
   BIRTH_TIME_OPTIONS,
@@ -455,11 +456,13 @@ export function LecturasShop({
                 onClick={() => {
                   providerRef.current = "mercadopago";
                 }}
-                className="focus-ring w-full rounded-full bg-gold px-6 py-4 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60"
+                className={`${MERCADOPAGO_BUTTON_CLASS} py-4`}
               >
-                {loading && loadingProvider === "mercadopago"
-                  ? "Preparando tu pago…"
-                  : `Pagar con Mercado Pago · ${formatUsd(service.priceUsd)}`}
+                <BrandLabel brand="mercadopago">
+                  {loading && loadingProvider === "mercadopago"
+                    ? "Preparando tu pago…"
+                    : `Pagar con Mercado Pago · ${formatUsd(service.priceUsd)}`}
+                </BrandLabel>
               </button>
               {paypal !== "hidden" && (
                 <div>
@@ -471,9 +474,11 @@ export function LecturasShop({
                     }}
                     className={`${PAYPAL_BUTTON_CLASS} py-4`}
                   >
-                    {loading && loadingProvider === "paypal"
-                      ? "Redirigiendo a PayPal…"
-                      : `Pagar con PayPal · ${formatUsd(service.priceUsd)}`}
+                    <BrandLabel brand="paypal">
+                      {loading && loadingProvider === "paypal"
+                        ? "Redirigiendo a PayPal…"
+                        : `Pagar con PayPal · ${formatUsd(service.priceUsd)}`}
+                    </BrandLabel>
                   </button>
                   {paypal === "preview" && <PreviewTag />}
                 </div>
