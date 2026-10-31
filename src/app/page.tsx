@@ -9,6 +9,8 @@ import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
 import { READING_DELIVERY_WINDOW, READING_SERVICES, formatUsd } from "@/lib/lecturas";
 import { getReadingsEnabled } from "@/lib/site-settings";
+import { getPublicHomeAnnouncement } from "@/lib/announcements";
+import { HomeAnnouncementCard } from "@/components/HomeAnnouncementCard";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,8 @@ export default async function HomePage() {
   );
   // Las lecturas solo se muestran en la portada cuando se publican desde el panel.
   const readingsEnabled = await getReadingsEnabled();
+  // La novedad (agendas en Amazon) solo se muestra cuando se activa desde el panel; si no, la portada queda igual que siempre.
+  const announcement = await getPublicHomeAnnouncement();
 
   return (
     <>
@@ -42,6 +46,20 @@ export default async function HomePage() {
       <section className="relative overflow-hidden px-5 pb-20 pt-10 sm:pt-24">
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
+            {/* Aviso discreto de la novedad: lleva a la tarjeta que está debajo del encabezado */}
+            {announcement && (
+              <a
+                href="#novedad-portada"
+                className="focus-ring group mb-6 inline-flex max-w-full items-center gap-2.5 rounded-2xl border border-gold/50 bg-gold/10 px-4 py-2 font-ui text-[11px] font-medium uppercase leading-snug tracking-wide text-gold-pale transition hover:border-gold hover:bg-gold/20 sm:text-xs"
+              >
+                <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
+                </span>
+                <span>{announcement.pill || announcement.title}</span>
+                <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
+            )}
             <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">
               Astrología · Tarot · Psicología astrológica
             </p>
@@ -100,6 +118,19 @@ export default async function HomePage() {
       <div className="mx-auto max-w-6xl px-5">
         <div className="gold-line" />
       </div>
+
+      {/* Novedad de la portada (agendas en Amazon): solo visible cuando se activa desde el panel */}
+      {announcement && (
+        <>
+          <section id="novedad-portada" className="mx-auto max-w-6xl scroll-mt-36 px-5 py-14 sm:scroll-mt-24">
+            <HomeAnnouncementCard content={announcement} />
+          </section>
+
+          <div className="mx-auto max-w-6xl px-5">
+            <div className="gold-line" />
+          </div>
+        </>
+      )}
 
       {/* Lecturas personalizadas: solo visibles cuando se publican desde el panel */}
       {readingsEnabled && (
