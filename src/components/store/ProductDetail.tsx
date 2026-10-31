@@ -8,6 +8,7 @@ import { StoreViewTracker } from "@/components/store/StoreViewTracker";
 import { ProductVideo } from "@/components/store/ProductVideo";
 import type { ProductViewModel } from "@/lib/store-products";
 import { PaypalButton } from "@/components/PaypalButton";
+import { BrandLabel, MERCADOPAGO_BUTTON_CLASS } from "@/components/PaymentBrand";
 import { FX_NOTE, formatArsAmount, formatUsdAmount } from "@/lib/pricing";
 
 function Carousel({
@@ -343,9 +344,11 @@ export function ProductDetail({
                           type="button"
                           disabled={payLoading}
                           onClick={payWithMercadoPago}
-                          className="focus-ring w-full rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg hover:bg-gold-bright disabled:opacity-60"
+                          className={MERCADOPAGO_BUTTON_CLASS}
                         >
-                          {payLoading ? "Redirigiendo…" : hasUsdPrice ? "Comprar con Mercado Pago" : "Comprar"}
+                          <BrandLabel brand="mercadopago">
+                            {payLoading ? "Redirigiendo…" : hasUsdPrice ? "Comprar con Mercado Pago" : "Comprar"}
+                          </BrandLabel>
                         </button>
                         {hasUsdPrice && (
                           <PaypalButton
