@@ -63,6 +63,11 @@ model Subscriber {
   unsubscribeToken String    @unique @default(cuid())
   createdAt        DateTime  @default(now())
   confirmedAt      DateTime?
+  // Fecha en que la persona se dio de baja del boletín. Si tiene fecha, no recibe más correos.
+  unsubscribedAt   DateTime?
+  // De dónde llegó la suscripción: la etiqueta utm_source del enlace (youtube, instagram…) o la parte del sitio
+  // desde donde se suscribió (web-portada, web-articulo…). Vacío en los suscriptores anteriores a este registro.
+  source           String?
 }
 
 model MembershipPlan {
@@ -137,6 +142,8 @@ model Product {
   // Se carga a mano desde el admin, no se calcula solo a partir de las compras reales.
   salesCount           Int?
   fileUrl              String?
+  // Video de presentación del producto: se sube desde el panel (Vercel Blob) y se muestra en la ficha pública.
+  videoUrl             String?
   // --- SEO (todos opcionales: si están vacíos, la web usa el título y la descripción del producto) ---
   // Título que aparece en Google y en la pestaña del navegador (ideal: hasta ~60 caracteres).
   metaTitle            String?
