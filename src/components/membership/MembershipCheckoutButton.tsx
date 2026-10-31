@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PaypalButton } from "@/components/PaypalButton";
+import { BrandLabel, MERCADOPAGO_BUTTON_CLASS } from "@/components/PaymentBrand";
 import type { PaypalVisibility } from "@/lib/paypal-access";
 
 // Aviso que se muestra debajo del botón de pago, tanto con sesión iniciada como sin ella.
@@ -92,9 +93,9 @@ export function MembershipCheckoutButton({
         type="button"
         disabled={loading}
         onClick={handleClick}
-        className="focus-ring inline-block w-full rounded-full bg-gold px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60"
+        className={`${MERCADOPAGO_BUTTON_CLASS} inline-block py-3`}
       >
-        {loading ? "Redirigiendo…" : "Pagar con Mercado Pago"}
+        <BrandLabel brand="mercadopago">{loading ? "Redirigiendo…" : "Pagar con Mercado Pago"}</BrandLabel>
       </button>
       {paypal !== "hidden" && (
         <div className="mt-3">
