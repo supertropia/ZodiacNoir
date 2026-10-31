@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slugify";
 import { ProductSeoSection } from "@/components/admin/ProductSeoSection";
 import { FormattedText } from "@/components/store/FormattedText";
+import { VideoUploadField } from "@/components/admin/VideoUploadField";
 import type { FaqItem } from "@/lib/seo";
 
 type ContentHighlight = { title: string; description: string };
@@ -34,6 +35,8 @@ export type ProductFormValues = {
   audienceText: string;
   salesCount: number | null;
   fileUrl: string;
+  // Video de presentación (se sube a Vercel Blob; opcional)
+  videoUrl: string;
   // --- SEO ---
   metaTitle: string;
   metaDescription: string;
@@ -51,7 +54,7 @@ const emptyValues: ProductFormValues = {
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
-  audienceText: "", salesCount: null, fileUrl: "",
+  audienceText: "", salesCount: null, fileUrl: "", videoUrl: "",
   metaTitle: "", metaDescription: "", focusKeyword: "", coverImageAlt: "", tags: "", faq: [],
   published: false,
 };
@@ -63,6 +66,7 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
   const [slugTouched, setSlugTouched] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [videoBusy, setVideoBusy] = useState(false);
   const [error, setError] = useState("");
 
   const set = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) =>
@@ -378,6 +382,15 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
       </div>
 
       <div className={sectionClass}>
+        <p className="font-display text-sm text-gold-pale">Video de presentación (opcional)</p>
+        <p className="font-ui text-xs text-gold-dim">
+          Se muestra en la ficha pública del producto, debajo de la portada y los botones de compra, con el título «Mira la presentación».
+          Si no cargas un video, esa sección no aparece.
+        </p>
+        <VideoUploadField value={values.videoUrl} onChange={(url) => set("videoUrl", url)} onBusyChange={setVideoBusy} />
+      </div>
+
+      <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Qué vas a recibir (tarjetas de contenido)</p>
         <p className="font-ui text-xs text-gold-dim">
           Cada tarjeta se ve completa en la ficha, una al lado de la otra. {FORMAT_HINT}
@@ -472,9 +485,9 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
       </label>
 
       <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={saving}
+        <button type="submit" disabled={saving || videoBusy}
           className="focus-ring rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60">
-          {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Crear producto"}
+          {saving ? "Guardando…" : videoBusy ? "Subiendo el video…" : isEditing ? "Guardar cambios" : "Crear producto"}
         </button>
       </div>
     </form>
