@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPayment, getPreapproval } from "@/lib/mercadopago";
-import { mapPreapprovalStatus } from "@/lib/membership";
+import { mapPreapprovalStatus, notifyMembershipActivated } from "@/lib/membership";
+import { sendSaleAlert } from "@/lib/sale-alert";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,7 @@ async function handlePaymentNotification(paymentId: string) {
         // (Mercado Pago a veces reenvía la misma notificación más de una vez).
         if (!wasAlreadyPaid) {
           await sendDownloadEmail(email, product.title, product.fileUrl);
+          await sendSaleAlert({ kind: "producto", title: product.title, buyer: email, provider: "mercadopago" });
         }
       }
     }
@@ -102,7 +104,7 @@ async function handlePreapprovalNotification(preapprovalId: string) {
     });
 
     if (known) {
-      await prisma.subscription.update({
+      const updatedKnown = await prisma.subscription.update({
         where: { id: known.id },
         data: {
           provider: "mercadopago",
@@ -111,8 +113,10 @@ async function handlePreapprovalNotification(preapprovalId: string) {
           endsAt: status === "cancelled" ? known.endsAt ?? new Date() : null,
         },
       });
+      await notifyMembershipActivated(updatedKnown, known.status, status);
     } else if (email) {
-      await prisma.subscription.upsert({
+      const before = await prisma.subscription.findUnique({ where: { email } });
+      const saved = await prisma.subscription.upsert({
         where: { email },
         update: {
           provider: "mercadopago",
@@ -130,6 +134,7 @@ async function handlePreapprovalNotification(preapprovalId: string) {
           planId,
         },
       });
+      await notifyMembershipActivated(saved, before?.status, status);
     }
 
     return NextResponse.json({ ok: true });
