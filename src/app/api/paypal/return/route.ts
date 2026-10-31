@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { capturePaypalOrder, getSiteUrl, readCompletedCapture } from "@/lib/paypal";
 import { sendDownloadEmail } from "@/lib/purchase-email";
+import { sendSaleAlert } from "@/lib/sale-alert";
 import { sendReadingPaidEmails } from "@/lib/lecturas-email";
 import { READING_DELIVERY_MAX_BUSINESS_DAYS, addBusinessDays } from "@/lib/lecturas";
 import { syncPaypalSubscription } from "@/lib/membership";
@@ -73,6 +74,7 @@ async function handleProduct(url: URL, productId: string, go: Go) {
   });
   if (already?.status !== "paid") {
     await sendDownloadEmail(email, product.title, product.fileUrl);
+    await sendSaleAlert({ kind: "producto", title: product.title, buyer: email, provider: "paypal" });
   }
 
   return go("/tienda?compra=1");
