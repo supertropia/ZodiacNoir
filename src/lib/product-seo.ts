@@ -219,6 +219,12 @@ export type ProductJsonLdInput = {
   slug: string;
   priceArs: number | null;
   priceUsd?: number | null;
+  /** Si el producto tiene varios diseños con precios distintos: el más alto (priceUsd pasa a ser el más bajo). */
+  highPriceUsd?: number | null;
+  /** Cantidad de diseños con precio (para declarar un rango de precios). */
+  designCount?: number;
+  /** Ruta de categorías visibles del producto, de la principal a la subcategoría. */
+  categoryChain?: { slug: string; name: string }[];
   keywords: string[];
   faq: FaqItem[];
 };
@@ -235,31 +241,47 @@ export function buildProductJsonLd(input: ProductJsonLdInput) {
     sku: input.slug,
     image: input.image ? [input.image] : undefined,
     brand,
-    category: "Libros de astrología",
+    category:
+      input.categoryChain && input.categoryChain.length > 0
+        ? input.categoryChain.map((c) => c.name).join(" > ")
+        : "Libros de astrología",
     inLanguage: "es",
     keywords: input.keywords.length > 0 ? input.keywords.join(", ") : undefined,
     // Solo se declara precio cuando se vende el PDF directo (el precio de Amazon es texto libre y lo fija Amazon).
     offers:
-      input.priceUsd || input.priceArs
+      input.priceUsd && input.highPriceUsd && input.highPriceUsd > input.priceUsd
         ? {
-            "@type": "Offer",
+            "@type": "AggregateOffer",
             url: input.url,
-            price: input.priceUsd ?? input.priceArs,
-            priceCurrency: input.priceUsd ? "USD" : "ARS",
+            lowPrice: input.priceUsd,
+            highPrice: input.highPriceUsd,
+            priceCurrency: "USD",
+            offerCount: input.designCount ?? 1,
             availability: "https://schema.org/InStock",
             itemCondition: "https://schema.org/NewCondition",
           }
-        : undefined,
+        : input.priceUsd || input.priceArs
+          ? {
+              "@type": "Offer",
+              url: input.url,
+              price: input.priceUsd ?? input.priceArs,
+              priceCurrency: input.priceUsd ? "USD" : "ARS",
+              availability: "https://schema.org/InStock",
+              itemCondition: "https://schema.org/NewCondition",
+            }
+          : undefined,
   };
 
+  const trail = [
+    { name: "Inicio", item: `${input.siteUrl}/` },
+    { name: "Tienda", item: `${input.siteUrl}/tienda` },
+    ...(input.categoryChain ?? []).map((c) => ({ name: c.name, item: `${input.siteUrl}/tienda/categoria/${c.slug}` })),
+    { name: input.title, item: input.url },
+  ];
   const breadcrumbs = {
     "@type": "BreadcrumbList",
     "@id": `${input.url}#breadcrumbs`,
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Inicio", item: `${input.siteUrl}/` },
-      { "@type": "ListItem", position: 2, name: "Tienda", item: `${input.siteUrl}/tienda` },
-      { "@type": "ListItem", position: 3, name: input.title, item: input.url },
-    ],
+    itemListElement: trail.map((step, index) => ({ "@type": "ListItem", position: index + 1, name: step.name, item: step.item })),
   };
 
   const graph: Record<string, unknown>[] = [product, breadcrumbs];
