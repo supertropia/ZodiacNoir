@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AmazonPrice, ProductDetail } from "@/components/store/ProductDetail";
 import { toPlainText } from "@/components/store/FormattedText";
 import type { ProductViewModel } from "@/lib/store-products";
+import { hasPdfOffer, listPriceUsd } from "@/lib/store-designs";
 import { formatUsdAmount } from "@/lib/pricing";
 
 export type { ProductViewModel } from "@/lib/store-products";
@@ -14,8 +15,9 @@ export function ProductGrid({
   sectionId = "libros",
 }: {
   products: ProductViewModel[];
+  /** Producto (o diseño) que se abre al cargar la página: viene del enlace /tienda?producto=... */
   initialProductSlug?: string;
-  // Identifica la cuadrícula cuando hay más de una en la misma página (libros y material PDF).
+  // Identifica la cuadrícula cuando hay más de una en la misma página (por ejemplo, una por categoría).
   sectionId?: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -31,7 +33,8 @@ export function ProductGrid({
 
   useEffect(() => {
     if (!initialProductSlug) return;
-    const match = products.find((p) => p.slug === initialProductSlug);
+    // El enlace puede ser el de un producto o el de uno de sus diseños (en ese caso se abre la colección con ese diseño).
+    const match = products.find((p) => p.slug === initialProductSlug || p.designs.some((d) => d.slug === initialProductSlug));
     if (match) {
       setOpenId(match.id);
       scrollToDetail(100);
@@ -57,9 +60,13 @@ export function ProductGrid({
       <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((product) => {
           const isOpen = openId === product.id;
-          // Portada completa del libro: se prefiere la imagen alta (hero) y, si no existe, la de la tarjeta.
-          const stageImage = product.heroImage ?? product.coverImage;
-          const hasPdf = Boolean(product.priceUsd) || Boolean(product.priceArs) || product.owned;
+          // Portada completa: se prefiere la imagen alta (hero) y, si no existe, la de la tarjeta. Una colección sin
+          // portada propia usa la de su primer diseño.
+          const firstDesign = product.designs[0];
+          const stageImage =
+            product.heroImage ?? product.coverImage ?? firstDesign?.coverImage ?? firstDesign?.heroImage ?? null;
+          const hasPdf = hasPdfOffer(product);
+          const price = listPriceUsd(product);
           return (
             <li key={product.id} className="flex">
               <div
@@ -72,7 +79,7 @@ export function ProductGrid({
                   {stageImage ? (
                     <img
                       src={stageImage}
-                      alt={product.coverImageAlt || `Portada del libro ${product.title}`}
+                      alt={product.coverImageAlt || `Portada de ${product.title}`}
                       loading="lazy"
                       decoding="async"
                       className="max-h-full max-w-full rounded-lg object-contain shadow-[0_14px_30px_-10px_rgba(18,13,28,0.55)] ring-1 ring-gold/30 transition duration-500 group-hover:scale-[1.03]"
@@ -88,6 +95,14 @@ export function ProductGrid({
                   <ul className="mb-3 flex flex-wrap gap-1.5 font-ui text-[11px] uppercase tracking-wide">
                     {product.owned && (
                       <li className="rounded-full bg-gold px-2.5 py-1 font-medium text-noir-bg">Ya lo tienes</li>
+                    )}
+                    {product.isNew && !product.owned && (
+                      <li className="rounded-full border border-gold bg-gold/20 px-2.5 py-1 font-medium text-gold-pale">Nuevo</li>
+                    )}
+                    {product.designs.length > 1 && (
+                      <li className="rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-gold-pale">
+                        {product.designs.length} diseños
+                      </li>
                     )}
                     {hasPdf && (
                       <li className="rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-gold-pale">PDF</li>
@@ -122,8 +137,11 @@ export function ProductGrid({
 
                   <div className="mt-4 flex items-center justify-between gap-3 border-t border-gold/15 pt-3">
                     <span className="font-ui text-sm font-medium text-gold-pale">
-                      {product.priceUsd ? (
-                        formatUsdAmount(product.priceUsd)
+                      {price ? (
+                        <>
+                          {price.isFrom && <span className="mr-1 text-xs font-normal text-gold-dim">Desde</span>}
+                          {formatUsdAmount(price.amount)}
+                        </>
                       ) : product.priceArs ? (
                         `ARS ${product.priceArs.toLocaleString("es-AR")}`
                       ) : product.amazonKindlePrice ? (
@@ -133,7 +151,7 @@ export function ProductGrid({
                       )}
                     </span>
                     <span className="font-ui text-xs uppercase tracking-wide text-gold-pale transition group-hover:text-gold">
-                      {isOpen ? "Ver ficha ↓" : "Ver descripción →"}
+                      {isOpen ? "Ver ficha ↓" : product.designs.length > 1 ? "Elegir diseño →" : "Ver descripción →"}
                     </span>
                   </div>
                 </div>
@@ -147,7 +165,7 @@ export function ProductGrid({
       <div
         id={`ficha-${sectionId}`}
         role="region"
-        aria-label={openProduct ? `Ficha de ${openProduct.title}` : "Ficha del libro"}
+        aria-label={openProduct ? `Ficha de ${openProduct.title}` : "Ficha del producto"}
         className={`grid scroll-mt-36 overflow-hidden rounded-2xl border border-gold/25 bg-noir-surface transition-[grid-template-rows,margin-top] duration-500 sm:scroll-mt-24 ${
           openProduct ? "mt-9 grid-rows-[1fr]" : "mt-0 grid-rows-[0fr] border-transparent"
         }`}
@@ -166,6 +184,11 @@ export function ProductGrid({
                 // se corre hacia abajo. Recalculamos el scroll para que el título y los botones queden visibles.
                 onHeroLoad={() => scrollToDetail(0)}
                 detailRef={detalleRef}
+                initialDesignSlug={
+                  initialProductSlug && openProduct.designs.some((d) => d.slug === initialProductSlug)
+                    ? initialProductSlug
+                    : null
+                }
               />
             </div>
           )}
