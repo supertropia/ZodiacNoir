@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type ChangeEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slugify";
 import { ProductSeoSection } from "@/components/admin/ProductSeoSection";
@@ -19,7 +20,15 @@ export type ProductFormValues = {
   priceLabel: string;
   priceArs: number | null;
   priceUsd: number | null;
-  kind: string;
+  // --- Organización en la tienda ---
+  // Categoría (o subcategoría) donde se muestra. Los diseños usan la de su colección.
+  categoryId: string;
+  // true = colección con varios diseños (no se compra: se compran sus diseños)
+  isCollection: boolean;
+  // Si tiene valor, este producto es un diseño de esa colección
+  parentId: string;
+  // Nombre corto del diseño, ej. "Minimal · A4"
+  variantLabel: string;
   amazonKindleUrl: string;
   amazonKindlePrice: string;
   amazonPaperbackUrl: string;
@@ -50,7 +59,8 @@ export type ProductFormValues = {
 
 const emptyValues: ProductFormValues = {
   slug: "", title: "", description: "", priceLabel: "",
-  priceArs: null, priceUsd: null, kind: "book", amazonKindleUrl: "", amazonKindlePrice: "", amazonPaperbackUrl: "", amazonPaperbackPrice: "",
+  priceArs: null, priceUsd: null, categoryId: "", isCollection: false, parentId: "", variantLabel: "",
+  amazonKindleUrl: "", amazonKindlePrice: "", amazonPaperbackUrl: "", amazonPaperbackPrice: "",
   lemonVariantId: "", coverImage: "", coverImagePosition: 50,
   heroImage: "", heroImagePosition: 50,
   galleryImages: [], contentHighlights: [], testimonials: [],
@@ -59,11 +69,41 @@ const emptyValues: ProductFormValues = {
   published: false,
 };
 
-export function ProductForm({ initial }: { initial?: ProductFormValues }) {
+export type CategoryOption = { id: string; label: string };
+export type CollectionOption = { id: string; title: string; categoryLabel: string };
+
+type ProductMode = "single" | "collection" | "design";
+
+export function ProductForm({
+  initial,
+  categories,
+  collections,
+  defaultParentId,
+}: {
+  initial?: ProductFormValues;
+  /** Todas las categorías y subcategorías, con su nombre completo (ej. «Imprimibles › Calendarios»). */
+  categories: CategoryOption[];
+  /** Las colecciones con varios diseños que ya existen (para crear un diseño dentro de una). */
+  collections: CollectionOption[];
+  /** Al crear un producto nuevo desde «+ Agregar diseño»: la colección en la que se arranca. */
+  defaultParentId?: string;
+}) {
   const router = useRouter();
   const isEditing = Boolean(initial?.id);
-  const [values, setValues] = useState<ProductFormValues>(initial ?? emptyValues);
+  const [values, setValues] = useState<ProductFormValues>(
+    initial ?? { ...emptyValues, parentId: defaultParentId && collections.some((c) => c.id === defaultParentId) ? defaultParentId : "" }
+  );
   const [slugTouched, setSlugTouched] = useState(isEditing);
+  // El tipo de producto sale de dos datos: si tiene colección es un diseño; si está marcado, es una colección.
+  const mode: ProductMode = values.parentId ? "design" : values.isCollection ? "collection" : "single";
+  const parentCollection = collections.find((c) => c.id === values.parentId) ?? null;
+  const setMode = (next: ProductMode) =>
+    setValues((v) => ({
+      ...v,
+      isCollection: next === "collection",
+      // Al pasar a diseño se elige la primera colección; al salir de diseño se vacía.
+      parentId: next === "design" ? (v.parentId || collections[0]?.id || "") : "",
+    }));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [videoBusy, setVideoBusy] = useState(false);
@@ -162,10 +202,15 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
     try {
       const url = isEditing ? `/api/admin/products/${initial!.id}` : "/api/admin/products";
       const method = isEditing ? "PUT" : "POST";
+      // Un diseño no lleva título propio: el servidor lo arma como «Colección · Diseño». Su dirección se conserva al editar.
+      const payload =
+        mode === "design"
+          ? { ...values, title: "", slug: isEditing ? values.slug : "", isCollection: false }
+          : { ...values, parentId: "", variantLabel: "" };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al guardar el producto");
@@ -196,44 +241,137 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         </div>
       )}
 
+      {/* Tipo de producto: define qué campos se piden y cómo se muestra en la tienda */}
+      <div className={sectionClass}>
+        <p className="font-display text-sm text-gold-pale">¿Qué estás cargando?</p>
+        <div className="grid gap-3 sm:grid-cols-3" role="group" aria-label="Tipo de producto">
+          {MODE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={mode === option.value}
+              onClick={() => setMode(option.value)}
+              className={`focus-ring rounded-xl border p-4 text-left transition ${
+                mode === option.value ? "border-gold bg-gold/10" : "border-gold/20 hover:border-gold/50"
+              }`}
+            >
+              <span className="block font-display text-sm text-gold-pale">{option.title}</span>
+              <span className="mt-1 block font-ui text-xs leading-snug text-gold-dim">{option.help}</span>
+            </button>
+          ))}
+        </div>
+
+        {mode === "design" && (
+          <div className="space-y-4 pt-2">
+            {collections.length === 0 ? (
+              <p className="rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright">
+                Todavía no hay ninguna colección. Primero crea una: elige «Colección con varios diseños» arriba, guárdala, y
+                después agrégale sus diseños.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <label className={labelClass} htmlFor="parentId">Colección a la que pertenece</label>
+                  <select id="parentId" required className={inputClass} value={values.parentId}
+                    onChange={(e) => set("parentId", e.target.value)}>
+                    {collections.map((c) => (
+                      <option key={c.id} value={c.id} className="bg-noir-surface">
+                        {c.title} · {c.categoryLabel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="variantLabel">Nombre del diseño</label>
+                  <input id="variantLabel" required maxLength={80} className={inputClass} value={values.variantLabel}
+                    onChange={(e) => set("variantLabel", e.target.value)}
+                    placeholder="Ej. Minimal · A4 · semana en una página" />
+                  <p className="mt-1.5 font-ui text-xs text-gold-dim">
+                    Es el nombre que ve la compradora al elegir el diseño. En la tienda se verá como «
+                    {parentCollection?.title ?? "tu colección"}» con este diseño seleccionado.
+                  </p>
+                </div>
+                <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 font-ui text-xs leading-relaxed text-gold-pale/85">
+                  Este diseño usa la descripción, «Para quién es esto», las tarjetas de contenido, los testimonios, las
+                  preguntas frecuentes, el video y el SEO de la colección. Aquí solo completas lo propio de este diseño:
+                  portada, imágenes, precio y archivo PDF. Va siempre en la categoría de su colección.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="space-y-6">
-        <div>
-          <label className={labelClass} htmlFor="title">Título del PDF</label>
-          <input id="title" required className={inputClass} value={values.title}
-            onChange={(e) => onTitleChange(e.target.value)} placeholder="Ej. Guía de efemérides 2026" />
-        </div>
+        {mode !== "design" && (
+          <>
+            <div>
+              <label className={labelClass} htmlFor="title">
+                {mode === "collection" ? "Título de la colección" : "Título del producto"}
+              </label>
+              <input id="title" required className={inputClass} value={values.title}
+                onChange={(e) => onTitleChange(e.target.value)}
+                placeholder={mode === "collection" ? "Ej. Calendario astrológico 2027" : "Ej. Guía de efemérides 2026"} />
+            </div>
 
-        <div>
-          <label className={labelClass} htmlFor="slug">Slug interno</label>
-          <input id="slug" required className={inputClass} value={values.slug}
-            onChange={(e) => { setSlugTouched(true); set("slug", slugify(e.target.value)); }} />
-        </div>
+            <div>
+              <label className={labelClass} htmlFor="slug">Slug interno</label>
+              <input id="slug" required className={inputClass} value={values.slug}
+                onChange={(e) => { setSlugTouched(true); set("slug", slugify(e.target.value)); }} />
+            </div>
 
-        <div>
-          <label className={labelClass} htmlFor="description">Descripción del producto</label>
-          <textarea id="description" required rows={10} className={inputClass}
-            value={values.description} onChange={(e) => set("description", e.target.value)} />
-          <p className="mt-1.5 font-ui text-xs text-gold-dim">
-            En la tarjeta se ven solo las primeras líneas; en la ficha y en la página del libro se ve completa.
-            {" "}{FORMAT_HINT}
+            <div>
+              <label className={labelClass} htmlFor="categoryId">Categoría en la tienda</label>
+              <select id="categoryId" required className={inputClass} value={values.categoryId}
+                onChange={(e) => set("categoryId", e.target.value)}>
+                <option value="" className="bg-noir-surface">Elige una categoría…</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id} className="bg-noir-surface">{c.label}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 font-ui text-xs text-gold-dim">
+                Define en qué parte de la tienda aparece{mode === "collection" ? " (y todos sus diseños con ella)" : ""}. ¿Falta una categoría? Créala en
+                {" "}<Link href="/admin/categorias" className="underline decoration-gold underline-offset-2 hover:text-gold">Categorías</Link>.
+              </p>
+            </div>
+
+            <div>
+              <label className={labelClass} htmlFor="description">
+                {mode === "collection" ? "Descripción de la colección (la comparten todos sus diseños)" : "Descripción del producto"}
+              </label>
+              <textarea id="description" required rows={10} className={inputClass}
+                value={values.description} onChange={(e) => set("description", e.target.value)} />
+              <p className="mt-1.5 font-ui text-xs text-gold-dim">
+                En la tarjeta se ven solo las primeras líneas; en la ficha y en la página del producto se ve completa.
+                {" "}{FORMAT_HINT}
+              </p>
+              <TextPreview text={values.description} autoParagraphs />
+            </div>
+
+            <div>
+              <label className={labelClass} htmlFor="audienceText">Para quién es esto</label>
+              <textarea id="audienceText" rows={8} className={inputClass}
+                value={values.audienceText}
+                onChange={(e) => set("audienceText", e.target.value)}
+                placeholder={"Este libro es para ti si:\n• Sientes que algo se está moviendo en tu vida.\n• Estás cerca de los 29, 37 o 42 años.\n• Quieres entender tu carta natal desde cero."} />
+              <p className="mt-1.5 font-ui text-xs text-gold-dim">{FORMAT_HINT}</p>
+              <TextPreview text={values.audienceText} />
+            </div>
+          </>
+        )}
+
+        {mode === "collection" && (
+          <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 font-ui text-xs leading-relaxed text-gold-pale/85">
+            Una colección no tiene precio ni PDF propios: se compran sus diseños. Guárdala y, desde la lista de productos,
+            usa «+ Agregar diseño» para cargar cada estilo o formato. Mientras no tenga al menos un diseño publicado, no se
+            muestra en la tienda.
           </p>
-          <TextPreview text={values.description} autoParagraphs />
-        </div>
+        )}
 
-        <div>
-          <label className={labelClass} htmlFor="audienceText">Para quién es esto</label>
-          <textarea id="audienceText" rows={8} className={inputClass}
-            value={values.audienceText}
-            onChange={(e) => set("audienceText", e.target.value)}
-            placeholder={"Este libro es para ti si:\n• Sientes que algo se está moviendo en tu vida.\n• Estás cerca de los 29, 37 o 42 años.\n• Quieres entender tu carta natal desde cero."} />
-          <p className="mt-1.5 font-ui text-xs text-gold-dim">{FORMAT_HINT}</p>
-          <TextPreview text={values.audienceText} />
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2">
+        {mode !== "collection" && (
           <div>
             <label className={labelClass} htmlFor="priceUsd">Precio en dólares (USD)</label>
-            <input id="priceUsd" type="number" min={0} step="0.01" className={inputClass}
+            <input id="priceUsd" type="number" min={0} step="0.01" className={`${inputClass} sm:max-w-xs`}
               value={values.priceUsd ?? ""}
               onChange={(e) => set("priceUsd", e.target.value === "" ? null : Number(e.target.value))}
               placeholder="Ej. 9.99" />
@@ -242,71 +380,66 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
               más el margen; con PayPal se cobra en dólares. Dejalo vacío si el producto no se vende como PDF.
             </p>
           </div>
-          <div>
-            <label className={labelClass} htmlFor="kind">Tipo de producto</label>
-            <select id="kind" className={inputClass} value={values.kind}
-              onChange={(e) => set("kind", e.target.value)}>
-              <option value="book" className="bg-noir-surface">Libro / e-book</option>
-              <option value="pdf" className="bg-noir-surface">Material PDF descargable (calendarios, cuadernos…)</option>
-            </select>
-            <p className="mt-1.5 font-ui text-xs text-gold-dim">
-              Define en qué sección de la tienda aparece.
-            </p>
-          </div>
-        </div>
+        )}
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="priceLabel">Texto del precio (opcional)</label>
-            <input id="priceLabel" className={inputClass} value={values.priceLabel}
-              onChange={(e) => set("priceLabel", e.target.value)} placeholder="Si lo dejas vacío se arma solo con el precio en USD" />
+        {mode === "single" && (
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="priceLabel">Texto del precio (opcional)</label>
+              <input id="priceLabel" className={inputClass} value={values.priceLabel}
+                onChange={(e) => set("priceLabel", e.target.value)} placeholder="Si lo dejas vacío se arma solo con el precio en USD" />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="lemonVariantId">Variant ID de Lemon Squeezy</label>
+              <input id="lemonVariantId" className={inputClass} value={values.lemonVariantId}
+                onChange={(e) => set("lemonVariantId", e.target.value)}
+                placeholder="Todavía no usamos Lemon Squeezy en la tienda" />
+            </div>
           </div>
-          <div>
-            <label className={labelClass} htmlFor="lemonVariantId">Variant ID de Lemon Squeezy</label>
-            <input id="lemonVariantId" className={inputClass} value={values.lemonVariantId}
-              onChange={(e) => set("lemonVariantId", e.target.value)}
-              placeholder="Todavía no usamos Lemon Squeezy en la tienda" />
-          </div>
-        </div>
+        )}
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="amazonKindleUrl">Link Kindle (versión digital) en Amazon</label>
-            <input id="amazonKindleUrl" className={inputClass} value={values.amazonKindleUrl}
-              onChange={(e) => set("amazonKindleUrl", e.target.value)}
-              placeholder="https://www.amazon.com/dp/tu-ebook" />
-          </div>
-        </div>
+        {mode !== "collection" && (
+          <>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="amazonKindleUrl">Link Kindle (versión digital) en Amazon</label>
+                <input id="amazonKindleUrl" className={inputClass} value={values.amazonKindleUrl}
+                  onChange={(e) => set("amazonKindleUrl", e.target.value)}
+                  placeholder="https://www.amazon.com/dp/tu-ebook" />
+              </div>
+            </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="amazonKindlePrice">Precio a mostrar (Kindle)</label>
-            <input id="amazonKindlePrice" className={inputClass} value={values.amazonKindlePrice}
-              onChange={(e) => set("amazonKindlePrice", e.target.value)}
-              placeholder="Ej. €5,99" />
-            <p className="mt-1.5 font-ui text-xs text-gold-dim">
-              Dejalo vacío si no vendés la versión Kindle en Amazon.
-            </p>
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="amazonPaperbackUrl">Link tapa blanda (libro físico) en Amazon</label>
-            <input id="amazonPaperbackUrl" className={inputClass} value={values.amazonPaperbackUrl}
-              onChange={(e) => set("amazonPaperbackUrl", e.target.value)}
-              placeholder="https://www.amazon.com/dp/tu-libro-fisico" />
-          </div>
-        </div>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="amazonKindlePrice">Precio a mostrar (Kindle)</label>
+                <input id="amazonKindlePrice" className={inputClass} value={values.amazonKindlePrice}
+                  onChange={(e) => set("amazonKindlePrice", e.target.value)}
+                  placeholder="Ej. €5,99" />
+                <p className="mt-1.5 font-ui text-xs text-gold-dim">
+                  Dejalo vacío si no vendés la versión Kindle en Amazon.
+                </p>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="amazonPaperbackUrl">Link tapa blanda (libro físico) en Amazon</label>
+                <input id="amazonPaperbackUrl" className={inputClass} value={values.amazonPaperbackUrl}
+                  onChange={(e) => set("amazonPaperbackUrl", e.target.value)}
+                  placeholder="https://www.amazon.com/dp/tu-libro-fisico" />
+              </div>
+            </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label className={labelClass} htmlFor="amazonPaperbackPrice">Precio a mostrar (tapa blanda)</label>
-            <input id="amazonPaperbackPrice" className={inputClass} value={values.amazonPaperbackPrice}
-              onChange={(e) => set("amazonPaperbackPrice", e.target.value)}
-              placeholder="Ej. USD 14,99" />
-            <p className="mt-1.5 font-ui text-xs text-gold-dim">
-              Dejalo vacío si no vendés la versión impresa en Amazon.
-            </p>
-          </div>
-        </div>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="amazonPaperbackPrice">Precio a mostrar (tapa blanda)</label>
+                <input id="amazonPaperbackPrice" className={inputClass} value={values.amazonPaperbackPrice}
+                  onChange={(e) => set("amazonPaperbackPrice", e.target.value)}
+                  placeholder="Ej. USD 14,99" />
+                <p className="mt-1.5 font-ui text-xs text-gold-dim">
+                  Dejalo vacío si no vendés la versión impresa en Amazon.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className={sectionClass}>
@@ -381,6 +514,7 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         </label>
       </div>
 
+      {mode !== "design" && (
       <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Video de presentación (opcional)</p>
         <p className="font-ui text-xs text-gold-dim">
@@ -389,7 +523,9 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
         </p>
         <VideoUploadField value={values.videoUrl} onChange={(url) => set("videoUrl", url)} onBusyChange={setVideoBusy} />
       </div>
+      )}
 
+      {mode !== "design" && (
       <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Qué vas a recibir (tarjetas de contenido)</p>
         <p className="font-ui text-xs text-gold-dim">
@@ -412,7 +548,9 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
 
         <button type="button" onClick={addHighlight} className={addBtnClass}>+ Agregar tarjeta de contenido</button>
       </div>
+      )}
 
+      {mode !== "design" && (
       <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Lo que dicen quienes ya lo leyeron (testimonios)</p>
         <p className="font-ui text-xs text-gold-dim">
@@ -444,6 +582,7 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
 
         <button type="button" onClick={addTestimonial} className={addBtnClass}>+ Agregar testimonio</button>
       </div>
+      )}
 
       <div className={sectionClass}>
         <p className="font-display text-sm text-gold-pale">Cantidad de ventas (prueba social)</p>
@@ -456,12 +595,16 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
           onChange={(e) => set("salesCount", e.target.value === "" ? null : Number(e.target.value))} />
       </div>
 
-      <ProductSeoSection
-        // La lista de control SEO cuenta el precio en USD como "forma de compra" (usa el campo priceArs).
-        values={{ ...values, priceArs: values.priceArs ?? (values.priceUsd ? values.priceUsd : null) }}
-        onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
-      />
+      {mode !== "design" && (
+        <ProductSeoSection
+          // La lista de control SEO cuenta el precio en USD como "forma de compra" (usa el campo priceArs).
+          // Una colección no tiene precio propio: se da por cumplido, porque se compra por sus diseños.
+          values={{ ...values, priceArs: mode === "collection" ? 1 : values.priceArs ?? (values.priceUsd ? values.priceUsd : null) }}
+          onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+        />
+      )}
 
+      {mode !== "collection" && (
       <div>
         <label className={labelClass}>Archivo PDF</label>
         <div className="flex items-center gap-3">
@@ -477,6 +620,7 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
           Este archivo solo se muestra a quien ya compró el producto (se valida por email en /tienda).
         </p>
       </div>
+      )}
 
       <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
         <input type="checkbox" checked={values.published}
@@ -496,6 +640,24 @@ export function ProductForm({ initial }: { initial?: ProductFormValues }) {
 
 const FORMAT_HINT =
   "Para separar párrafos dejá una línea en blanco. Para armar una lista, empezá cada línea con «•» o «-». Abajo ves cómo se va a ver.";
+
+const MODE_OPTIONS: { value: ProductMode; title: string; help: string }[] = [
+  {
+    value: "single",
+    title: "Producto único",
+    help: "Un e-book, un cuaderno, una guía… con su propia descripción, precio y archivo.",
+  },
+  {
+    value: "collection",
+    title: "Colección con varios diseños",
+    help: "Una sola descripción para varios estilos o formatos (por ejemplo, un calendario en 5 diseños).",
+  },
+  {
+    value: "design",
+    title: "Diseño de una colección",
+    help: "Un estilo o formato concreto de una colección que ya creaste. Hereda su descripción.",
+  },
+];
 
 /** Vista previa de cómo se verá el texto en la ficha: párrafos separados y listas con viñetas. */
 function TextPreview({ text, autoParagraphs = false }: { text: string; autoParagraphs?: boolean }) {
