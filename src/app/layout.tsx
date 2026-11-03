@@ -6,6 +6,7 @@ import { Providers } from "@/components/Providers";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CopyProtection } from "@/components/CopyProtection";
+import { SiteTracker } from "@/components/SiteTracker";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           />
         )}
         <Providers>
+          <SiteTracker />
           <Header />
           <main>{children}</main>
           <Footer />
