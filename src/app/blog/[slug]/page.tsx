@@ -118,7 +118,8 @@ export default async function ArticlePage({ params }: { params: { slug: string }
     ? [article.featuredProduct]
     : await safeQuery(() =>
         prisma.product.findMany({
-          where: { published: true },
+          // Los diseños no se muestran sueltos: se ven dentro de su colección.
+          where: { published: true, parentId: null, isCollection: false },
           orderBy: { createdAt: "desc" },
           take: 8,
         })
