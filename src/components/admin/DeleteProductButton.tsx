@@ -12,10 +12,14 @@ export function DeleteProductButton({ id, title }: { id: string; title: string }
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("No se pudo eliminar");
+      if (!res.ok) {
+        // Si el servidor explica el motivo (por ejemplo, una colección que todavía tiene diseños), se lo mostramos.
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data?.error === "string" ? data.error : "No se pudo eliminar");
+      }
       router.refresh();
-    } catch {
-      alert("Ocurrió un error al eliminar el producto.");
+    } catch (err) {
+      alert(err instanceof Error && err.message !== "No se pudo eliminar" ? err.message : "Ocurrió un error al eliminar el producto.");
     } finally {
       setLoading(false);
     }
