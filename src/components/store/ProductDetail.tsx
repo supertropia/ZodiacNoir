@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ShareButtons } from "@/components/ShareButtons";
 import { FormattedText } from "@/components/store/FormattedText";
 import { StoreViewTracker } from "@/components/store/StoreViewTracker";
 import { ProductVideo } from "@/components/store/ProductVideo";
 import type { ProductViewModel } from "@/lib/store-products";
+import { mergeDesign, pickInitialDesign } from "@/lib/store-designs";
 import { PaypalButton } from "@/components/PaypalButton";
 import { BrandLabel, MERCADOPAGO_BUTTON_CLASS } from "@/components/PaymentBrand";
 import { FX_NOTE, formatArsAmount, formatUsdAmount } from "@/lib/pricing";
@@ -141,34 +142,132 @@ export function AmazonPrice({ value }: { value: string }) {
 const SECTION_CLASS = "mt-10 border-t border-gold/20 pt-8";
 const SECTION_TITLE_CLASS = "mb-5 font-display text-xl text-gold-pale";
 
+// Precio corto de un diseño para su tarjeta de selección.
+function designPriceText(design: ProductViewModel): string {
+  if (design.priceUsd && design.priceUsd > 0) return formatUsdAmount(design.priceUsd);
+  if (design.priceArs) return formatArsAmount(design.priceArs);
+  return "";
+}
+
+/**
+ * «Elige tu diseño»: las variantes de un mismo producto (por ejemplo, el mismo calendario en distintos estilos).
+ * Al elegir una, la ficha cambia la portada, el precio y los botones de compra, y la descripción sigue siendo la misma.
+ */
+function DesignPicker({
+  designs,
+  activeId,
+  onSelect,
+}: {
+  designs: ProductViewModel[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="mt-6">
+      <p className="font-ui text-xs uppercase tracking-wide text-gold-pale">
+        Elige tu diseño <span className="text-gold-dim">· {designs.length} disponibles</span>
+      </p>
+      <div role="group" aria-label="Diseños disponibles" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {designs.map((design) => {
+          const selected = design.id === activeId;
+          const thumb = design.coverImage ?? design.heroImage;
+          const price = designPriceText(design);
+          return (
+            <button
+              key={design.id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onSelect(design.id)}
+              className={`focus-ring flex flex-col overflow-hidden rounded-xl border text-left transition ${
+                selected ? "border-gold bg-gold/10 ring-2 ring-gold/40" : "border-gold/25 hover:border-gold/60"
+              }`}
+            >
+              <span className="flex aspect-[4/3] items-center justify-center bg-noir-surface2 p-2">
+                {thumb ? (
+                  <img
+                    src={thumb}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="max-h-full max-w-full rounded object-contain"
+                  />
+                ) : (
+                  <span className="font-display text-3xl text-gold/50" aria-hidden="true">
+                    ✦
+                  </span>
+                )}
+              </span>
+              <span className="p-2.5">
+                <span className="block font-ui text-xs font-medium leading-snug text-gold-pale">
+                  {design.variantLabel || design.title}
+                </span>
+                <span className="mt-0.5 block font-ui text-[11px] text-gold-dim">
+                  {price}
+                  {design.owned ? `${price ? " · " : ""}Ya lo tienes` : ""}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Ficha completa de un producto: portada, descripción, formas de compra, contenido,
  * testimonios, capturas del interior, preguntas frecuentes y botones de compartir.
- * Se usa dentro de /tienda (al tocar una tarjeta) y en la página propia de cada libro.
+ * Se usa dentro de /tienda (al tocar una tarjeta) y en la página propia de cada producto.
+ * Si el producto es una colección con varios diseños, muestra el selector de diseños y la compra se hace
+ * sobre el diseño elegido.
  */
 export function ProductDetail({
-  product,
+  product: baseProduct,
   titleAs = "h2",
   shareUrl,
   pageHref,
   onClose,
   onHeroLoad,
   detailRef,
+  initialDesignSlug,
 }: {
   product: ProductViewModel;
   titleAs?: "h1" | "h2";
   shareUrl: string;
-  // Si se pasa, se muestra un enlace a la página propia del libro (solo dentro de /tienda).
+  // Si se pasa, se muestra un enlace a la página propia del producto (solo dentro de /tienda).
   pageHref?: string;
   onClose?: () => void;
   // Se llama cuando termina de cargar la portada (la ficha crece y /tienda vuelve a acomodar el scroll).
   onHeroLoad?: () => void;
   detailRef?: RefObject<HTMLDivElement>;
+  // Diseño que se muestra al abrir la ficha (viene del enlace ?diseno=...). Solo se usa en colecciones.
+  initialDesignSlug?: string | null;
 }) {
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [designId, setDesignId] = useState<string | null>(
+    () => pickInitialDesign(baseProduct.designs, initialDesignSlug)?.id ?? null
+  );
+
+  // El producto que se muestra: si es una colección, la descripción es la de la colección y lo demás (portada, precio,
+  // PDF, compra) es del diseño elegido.
+  const activeDesign = baseProduct.designs.find((d) => d.id === designId) ?? null;
+  const product = useMemo(() => mergeDesign(baseProduct, activeDesign), [baseProduct, activeDesign]);
+
+  const selectDesign = (id: string) => {
+    setDesignId(id);
+    // En la página propia del producto el enlace queda apuntando al diseño elegido, para poder compartirlo.
+    if (!onClose && typeof window !== "undefined") {
+      const design = baseProduct.designs.find((d) => d.id === id);
+      if (design) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("diseno", design.slug);
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  };
 
   const Title = titleAs;
   const SectionTag = titleAs === "h1" ? "h2" : "h3";
@@ -176,7 +275,8 @@ export function ProductDetail({
   const gallery = product.galleryImages;
   const galleryCount = gallery.length;
   const heroSrc = product.heroImage ?? product.coverImage;
-  const coverAlt = product.coverImageAlt || `Portada del libro ${product.title}`;
+  const coverAlt =
+    product.coverImageAlt || `Portada de ${product.title}${product.variantLabel ? ` — ${product.variantLabel}` : ""}`;
 
   const payWithMercadoPago = async () => {
     setPayLoading(true);
@@ -256,7 +356,7 @@ export function ProductDetail({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 font-body text-sm italic">
           {pageHref ? (
             <Link href={pageHref} className="focus-ring text-gold-pale underline decoration-gold underline-offset-4 hover:text-gold">
-              Abrir la página propia de este libro ↗
+              Abrir la página propia de este producto ↗
             </Link>
           ) : (
             <span />
@@ -293,6 +393,10 @@ export function ProductDetail({
             autoParagraphs
             className="mt-5 font-body text-lg leading-relaxed text-gold-pale/85"
           />
+
+          {baseProduct.designs.length > 0 && (
+            <DesignPicker designs={baseProduct.designs} activeId={designId} onSelect={selectDesign} />
+          )}
 
           {payError && <p className="mt-4 font-ui text-sm text-wine-bright">{payError}</p>}
 
@@ -428,7 +532,7 @@ export function ProductDetail({
 
             <div className="rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-center sm:col-span-2">
               <p className="font-ui text-sm uppercase tracking-wide text-gold-pale">
-                ¿Ya adquiriste nuestros libros? ¡Envíanos tu reseña!
+                ¿Ya adquiriste este producto? ¡Envíanos tu reseña!
               </p>
               <Link
                 href="/contacto"
@@ -482,7 +586,7 @@ export function ProductDetail({
 
       {product.testimonials.length > 0 && (
         <section className={SECTION_CLASS}>
-          <SectionTag className={SECTION_TITLE_CLASS}>Lo que dicen quienes ya lo leyeron</SectionTag>
+          <SectionTag className={SECTION_TITLE_CLASS}>Lo que dicen quienes ya lo tienen</SectionTag>
           <Carousel
             itemCount={product.testimonials.length}
             itemClassName="w-[85%] sm:w-1/2 lg:w-1/3"
@@ -526,7 +630,7 @@ export function ProductDetail({
               >
                 <img
                   src={gallery[i]}
-                  alt={`Página interior ${i + 1} del libro ${product.title}`}
+                  alt={`Imagen ${i + 1} de ${product.title}`}
                   loading="lazy"
                   className="h-full w-full object-cover"
                 />
@@ -571,7 +675,7 @@ export function ProductDetail({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Página del libro ampliada"
+          aria-label="Imagen ampliada"
           className="fixed inset-0 z-50 flex items-center justify-center bg-noir-bg/95 p-3 pb-16 sm:p-16"
           style={{ touchAction: "pan-y" }}
           onClick={closeLightbox}
@@ -593,7 +697,7 @@ export function ProductDetail({
           >
             <img
               src={gallery[lightboxIndex]}
-              alt={`Página interior ${lightboxIndex + 1} del libro ${product.title}`}
+              alt={`Imagen ${lightboxIndex + 1} de ${product.title}`}
               draggable={false}
               className="max-h-[78vh] max-w-full select-none rounded-lg object-contain shadow-[0_0_60px_rgba(0,0,0,0.45)]"
             />
