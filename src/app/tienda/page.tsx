@@ -5,19 +5,25 @@ import { authOptions } from "@/lib/auth";
 import { prisma, safeQuery } from "@/lib/prisma";
 import { ProductGrid } from "@/components/store/ProductGrid";
 import { StoreViewTracker } from "@/components/store/StoreViewTracker";
-import { toProductViewModel, type ProductViewModel } from "@/lib/store-products";
+import { StoreNav } from "@/components/store/StoreNav";
+import { CategoryCards } from "@/components/store/CategoryCards";
+import type { ProductViewModel } from "@/lib/store-products";
+import { loadStoreCatalog } from "@/lib/store-catalog";
+import { categoryHref, categoryIdsOf } from "@/lib/store-categories";
+import { buildProductListItems } from "@/lib/store-jsonld";
 import { serializeJsonLd } from "@/lib/seo";
-import { summarize } from "@/lib/product-seo";
-import { toPlainText } from "@/components/store/FormattedText";
 import { getUsdArsQuote } from "@/lib/exchange-rate";
 import { getPaypalVisibility } from "@/lib/paypal-access";
 import { FX_NOTE } from "@/lib/pricing";
 
 const SITE_URL = process.env.NEXTAUTH_URL || "https://zodiacnoirweb.com";
 
-const PAGE_TITLE = "Libros y e-books de astrología humanista";
+const PAGE_TITLE = "Tienda de astrología: e-books e imprimibles";
 const PAGE_DESCRIPTION =
-  "Libros y e-books de astrología humanista: tránsitos planetarios, lunaciones y efemérides. Descarga el PDF al instante o pídelos en Amazon desde cualquier país.";
+  "E-books de astrología humanista y material imprimible (calendarios astrológicos, cuadernos de trabajo): tránsitos, lunaciones y efemérides. Descarga el PDF al instante o pide los libros en Amazon desde cualquier país.";
+
+// Cuántos productos se muestran por categoría en la tienda general antes del botón «Ver todos».
+const PRODUCTS_PER_SECTION = 8;
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const first = await safeQuery(() =>
       prisma.product.findFirst({
-        where: { published: true },
+        where: { published: true, parentId: null, isCollection: false },
         orderBy: { createdAt: "desc" },
         select: { coverImage: true, heroImage: true },
       })
@@ -48,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
       url: "/tienda",
       type: "website",
       locale: "es_LA",
-      ...(shareImage ? { images: [{ url: shareImage, alt: "Libros de astrología de Zodiac Noir" }] } : {}),
+      ...(shareImage ? { images: [{ url: shareImage, alt: "Productos de astrología de Zodiac Noir" }] } : {}),
     },
     twitter: {
       card: shareImage ? "summary_large_image" : "summary",
@@ -62,7 +68,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const FAQ: { q: string; a: string }[] = [
   {
     q: "¿Cómo recibo el PDF después de pagar?",
-    a: "Apenas se confirma el pago, el botón de descarga aparece en la ficha del libro (si compraste con tu cuenta) y además te enviamos el enlace por correo. Si no lo ves en tu bandeja de entrada, revisa la carpeta de spam o correo no deseado.",
+    a: "Apenas se confirma el pago, el botón de descarga aparece en la ficha del producto (si compraste con tu cuenta) y además te enviamos el enlace por correo. Si no lo ves en tu bandeja de entrada, revisa la carpeta de spam o correo no deseado.",
   },
   {
     q: "¿En qué moneda están los precios?",
@@ -77,7 +83,15 @@ const FAQ: { q: string; a: string }[] = [
     a: "El PDF se descarga al instante y lo puedes leer en cualquier dispositivo. El Kindle es la versión digital para la app o el lector de Amazon. El libro físico es la edición impresa que Amazon te envía a casa. El contenido es el mismo; cambia el formato y la forma de recibirlo.",
   },
   {
-    q: "¿Necesito saber astrología para leer estos libros?",
+    q: "¿Qué es un imprimible?",
+    a: "Es material en PDF pensado para imprimir en casa (o usar en pantalla), como los calendarios astrológicos y los cuadernos de trabajo. Lo pagas una vez, lo descargas al instante y lo imprimes las veces que necesites para tu uso personal.",
+  },
+  {
+    q: "¿Qué significa que un producto tenga varios diseños?",
+    a: "Algunos productos, como los calendarios, existen en distintos estilos o formatos. Todos comparten la misma descripción y lo que cambia es el diseño: en la ficha eliges el que más te guste y ves su portada y su precio antes de comprar.",
+  },
+  {
+    q: "¿Necesito saber astrología para usar estos productos?",
     a: "Depende del título. En la ficha de cada libro, la sección «Para quién es esto» te indica el nivel y a quién está dirigido, para que elijas el que mejor se ajusta a ti.",
   },
   {
@@ -99,26 +113,26 @@ export default async function TiendaPage({
   const email = session?.user?.email ?? null;
   const isLoggedIn = Boolean(email);
 
-  const products = await safeQuery(() =>
-    prisma.product.findMany({
-      where: { published: true },
-      orderBy: { createdAt: "desc" },
-    })
-  );
-
   // Cotización del dólar (para mostrar el equivalente en pesos) y quién ve el botón de PayPal.
   const quote = await getUsdArsQuote();
   const paypal = await getPaypalVisibility();
 
-  const allViewModels: ProductViewModel[] = await Promise.all(
-    products.map((product) => toProductViewModel(product, email, "/tienda?compra=1", { fxRate: quote?.rate ?? null, paypal }))
-  );
-  // Dos secciones: libros y e-books, y material PDF descargable (calendarios, cuadernos imprimibles…).
-  const viewModels = allViewModels.filter((p) => p.kind !== "pdf");
-  const pdfModels = allViewModels.filter((p) => p.kind === "pdf");
+  const catalog = await loadStoreCatalog(email, { fxRate: quote?.rate ?? null, paypal });
+  const { tree, products, uncategorized } = catalog;
 
-  // Datos estructurados (schema.org): le explican a Google que esta página es un catálogo de libros,
-  // con el nombre, la descripción, la portada y el precio de cada uno.
+  // Una sección por categoría principal, con sus subcategorías incluidas.
+  const sections = tree.map((category) => {
+    const ids = new Set(categoryIdsOf(category));
+    return { category, items: products.filter((p) => p.categoryId !== null && ids.has(p.categoryId)) };
+  });
+
+  // Si el enlace trae ?producto=..., esa sección se muestra completa para que la ficha pueda abrirse.
+  const requested = searchParams?.producto;
+  const hasRequested = (items: ProductViewModel[]) =>
+    Boolean(requested) && items.some((p) => p.slug === requested || p.designs.some((d) => d.slug === requested));
+
+  // Datos estructurados (schema.org): le explican a Google que esta página es un catálogo,
+  // con el nombre, la descripción, la portada y el precio de cada producto.
   const pageUrl = `${SITE_URL}/tienda`;
   const jsonLd = {
     "@context": "https://schema.org",
@@ -136,33 +150,9 @@ export default async function TiendaPage({
       {
         "@type": "ItemList",
         "@id": `${pageUrl}#catalogo`,
-        name: "Catálogo de libros y e-books de astrología",
+        name: "Catálogo de e-books e imprimibles de astrología",
         numberOfItems: products.length,
-        itemListElement: products.map((product, index) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          item: {
-            "@type": "Product",
-            name: product.title,
-            description: summarize(product.metaDescription || toPlainText(product.description), 300),
-            url: `${pageUrl}/${product.slug}`,
-            ...(product.coverImage || product.heroImage
-              ? { image: product.coverImage ?? product.heroImage }
-              : {}),
-            brand: { "@type": "Brand", name: "Zodiac Noir" },
-            ...(product.priceUsd || product.priceArs
-              ? {
-                  offers: {
-                    "@type": "Offer",
-                    price: product.priceUsd ?? product.priceArs,
-                    priceCurrency: product.priceUsd ? "USD" : "ARS",
-                    availability: "https://schema.org/InStock",
-                    url: `${pageUrl}/${product.slug}`,
-                  },
-                }
-              : {}),
-          },
-        })),
+        itemListElement: buildProductListItems(products, SITE_URL),
       },
       {
         "@type": "BreadcrumbList",
@@ -184,17 +174,16 @@ export default async function TiendaPage({
       <header className="max-w-3xl">
         <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Tienda</p>
         <h1 className="mt-2 font-display text-3xl leading-tight text-gold-pale sm:text-4xl">
-          Libros y e-books de astrología
+          E-books e imprimibles de astrología
         </h1>
         <p className="mt-4 font-body text-xl leading-relaxed text-gold-pale/90">
-          Esta es la tienda de Zodiac Noir: libros y e-books de astrología humanista, ciclos lunares,
-          tránsitos planetarios y efemérides, pensados para que entiendas el cielo y lo lleves a tu vida
-          cotidiana.
+          Esta es la tienda de Zodiac Noir: e-books de astrología humanista y material imprimible (calendarios,
+          cuadernos de trabajo y más), pensados para que entiendas el cielo y lo lleves a tu vida cotidiana.
         </p>
         <p className="mt-3 font-body text-lg leading-relaxed text-gold-pale/80">
-          <strong className="font-semibold text-gold-pale">Toca o haz clic en cualquier libro</strong> para ver su
-          descripción completa, lo que incluye y para quién es. Puedes adquirirlo aquí mismo en PDF, con entrega
-          inmediata, o pedirlo en Amazon desde cualquier parte del mundo, en Kindle o en libro físico.
+          <strong className="font-semibold text-gold-pale">Elige una categoría</strong> o recorre todo el catálogo.
+          Toca cualquier producto para ver su descripción completa; los que tienen varios diseños te dejan elegir el
+          tuyo. Compra en PDF con entrega inmediata o pide los libros en Amazon desde cualquier parte del mundo.
         </p>
         <p className="mt-3 font-ui text-sm leading-relaxed text-gold-dim">
           Todos los precios están en dólares (USD). {FX_NOTE} Con PayPal se cobra directamente en dólares.
@@ -202,7 +191,7 @@ export default async function TiendaPage({
 
         <ul className="mt-5 flex flex-wrap gap-2.5 font-ui text-xs uppercase tracking-wide text-gold-pale">
           <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">PDF · pago único · descarga inmediata</li>
-          <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Kindle y libro físico en Amazon</li>
+          <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Libros en Kindle y papel (Amazon)</li>
           <li className="rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5">Disponible en todo el mundo</li>
         </ul>
       </header>
@@ -236,46 +225,85 @@ export default async function TiendaPage({
         </div>
       )}
 
-      {/* Catálogo */}
-      <section aria-labelledby="catalogo-titulo" className="mt-10">
-        <div className="flex flex-wrap items-end justify-between gap-2">
+      {/* Navegación por categorías */}
+      {tree.length > 0 && (
+        <div className="mt-10">
+          <StoreNav tree={tree} totalCount={products.length} />
+        </div>
+      )}
+
+      {products.length === 0 ? (
+        <section aria-labelledby="catalogo-titulo" className="mt-10">
           <h2 id="catalogo-titulo" className="font-display text-2xl text-gold-pale">
             Catálogo
           </h2>
-          {viewModels.length > 0 && (
-            <p className="font-body text-base italic text-gold-dim">Toca un libro para ver su descripción ↓</p>
-          )}
-        </div>
-
-        {viewModels.length === 0 ? (
           <div className="mt-6 rounded-xl border border-gold/20 bg-noir-surface/50 p-6 font-ui text-sm text-gold-dim">
-            Todavía no hay productos cargados. Creá uno nuevo desde <code>/admin/productos/nuevo</code>.
+            Todavía no hay productos disponibles. Vuelve pronto: estamos preparando material nuevo.
           </div>
-        ) : (
-          <ProductGrid products={viewModels} initialProductSlug={searchParams?.producto} sectionId="libros" />
-        )}
-      </section>
-
-      {/* Material PDF descargable: calendarios, cuadernos imprimibles y similares */}
-      {pdfModels.length > 0 && (
-        <section aria-labelledby="pdf-titulo" className="mt-16">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <h2 id="pdf-titulo" className="font-display text-2xl text-gold-pale">
-              Material PDF descargable
-            </h2>
-            <p className="font-body text-base italic text-gold-dim">Calendarios, cuadernos imprimibles y más ↓</p>
-          </div>
-          <p className="mt-3 max-w-3xl font-body text-lg leading-relaxed text-gold-pale/80">
-            Material práctico para imprimir o usar en pantalla. Pago único y descarga inmediata.
-          </p>
-          <ProductGrid products={pdfModels} initialProductSlug={searchParams?.producto} sectionId="material-pdf" />
         </section>
+      ) : (
+        <>
+          {/* Explorar por categoría */}
+          {tree.length > 1 && (
+            <section aria-labelledby="explorar-titulo" className="mt-10">
+              <h2 id="explorar-titulo" className="font-display text-2xl text-gold-pale">
+                Explora por categoría
+              </h2>
+              <CategoryCards categories={tree} />
+            </section>
+          )}
+
+          {/* Una sección por categoría */}
+          {sections.map(({ category, items }) => {
+            const showAll = items.length <= PRODUCTS_PER_SECTION || hasRequested(items);
+            const shown = showAll ? items : items.slice(0, PRODUCTS_PER_SECTION);
+            return (
+              <section key={category.id} aria-labelledby={`seccion-${category.slug}`} className="mt-16">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <h2 id={`seccion-${category.slug}`} className="font-display text-2xl text-gold-pale">
+                    {category.name}
+                  </h2>
+                  <Link
+                    href={categoryHref(category.slug)}
+                    className="focus-ring font-ui text-sm text-gold-pale underline decoration-gold decoration-2 underline-offset-4 hover:text-gold"
+                  >
+                    Ver todo en {category.name} →
+                  </Link>
+                </div>
+                {category.description && (
+                  <p className="mt-3 max-w-3xl font-body text-lg leading-relaxed text-gold-pale/80">{category.description}</p>
+                )}
+                <ProductGrid products={shown} initialProductSlug={requested} sectionId={`cat-${category.slug}`} />
+                {!showAll && (
+                  <div className="mt-6 text-center">
+                    <Link
+                      href={categoryHref(category.slug)}
+                      className="focus-ring inline-block rounded-full border border-gold/50 px-5 py-2.5 font-ui text-sm uppercase tracking-wide text-gold-pale transition hover:bg-gold/10"
+                    >
+                      Ver los {items.length} productos de {category.name}
+                    </Link>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+
+          {/* Productos sin categoría (por ejemplo, si se borró su categoría) */}
+          {uncategorized.length > 0 && (
+            <section aria-labelledby="otros-titulo" className="mt-16">
+              <h2 id="otros-titulo" className="font-display text-2xl text-gold-pale">
+                Otros productos
+              </h2>
+              <ProductGrid products={uncategorized} initialProductSlug={requested} sectionId="otros" />
+            </section>
+          )}
+        </>
       )}
 
       {/* Cómo conseguir los libros */}
       <section aria-labelledby="formas-titulo" className="mt-16">
         <h2 id="formas-titulo" className="font-display text-2xl text-gold-pale">
-          Dos formas de conseguir tu libro
+          Dos formas de conseguir tus productos
         </h2>
         <div className="mt-6 grid gap-5 md:grid-cols-2">
           <div className="rounded-2xl border border-gold/25 bg-noir-surface/60 p-6">
@@ -285,7 +313,7 @@ export default async function TiendaPage({
             <h3 className="mt-3 font-display text-lg text-gold-pale">PDF directo en esta tienda</h3>
             <p className="mt-2 font-body text-lg leading-relaxed text-gold-pale/80">
               Pago único con Mercado Pago (Latinoamérica) o con PayPal. Cuando se confirma el pago, descargas el
-              PDF al instante y también lo recibes por correo. Ideal si quieres empezar a leer hoy mismo.
+              PDF al instante y también lo recibes por correo. Ideal si quieres empezar hoy mismo, tanto con e-books como con imprimibles.
             </p>
           </div>
           <div className="rounded-2xl border border-gold/25 bg-noir-surface/60 p-6">
@@ -295,7 +323,7 @@ export default async function TiendaPage({
             </svg>
             <h3 className="mt-3 font-display text-lg text-gold-pale">Amazon, desde cualquier país</h3>
             <p className="mt-2 font-body text-lg leading-relaxed text-gold-pale/80">
-              Si estás fuera de Latinoamérica o prefieres el papel, abre la ficha del libro y elige Kindle o
+              Si estás fuera de Latinoamérica o prefieres el papel, abre la ficha del e-book y elige Kindle o
               libro físico. Amazon se encarga del pago, el envío y la entrega según tu ubicación.
             </p>
           </div>
