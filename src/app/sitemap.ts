@@ -3,6 +3,7 @@ import { prisma, safeQuery } from "@/lib/prisma";
 import { livePublicationFilter } from "@/lib/publication";
 import { signs } from "@/data/signs";
 import { getReadingsEnabled } from "@/lib/site-settings";
+import { buildCategoryTree, categoryHref, loadCategoryRows, withProductCounts, dropEmptyCategories, type CategoryNode } from "@/lib/store-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -43,20 +44,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // Una página propia por cada libro publicado de la tienda.
+  // Una página propia por cada producto publicado de la tienda. Los diseños no tienen página aparte (viven dentro de
+  // su colección), y una colección sin diseños publicados no se lista.
   const products = await safeQuery(() =>
     prisma.product.findMany({
       where: { published: true },
-      select: { slug: true },
+      select: { id: true, slug: true, parentId: true, isCollection: true, categoryId: true },
       orderBy: { createdAt: "desc" },
     })
   );
+  const parentsWithDesigns = new Set(products.map((p) => p.parentId).filter((id): id is string => Boolean(id)));
+  const topLevel = products.filter((p) => !p.parentId && (!p.isCollection || parentsWithDesigns.has(p.id)));
 
-  const productPages: MetadataRoute.Sitemap = products.map((product) => ({
+  const productPages: MetadataRoute.Sitemap = topLevel.map((product) => ({
     url: `${siteUrl}/tienda/${product.slug}`,
     changeFrequency: "monthly",
     priority: 0.8,
   }));
 
-  return [...staticPages, ...signPages, ...articlePages, ...productPages];
+  // Páginas de categoría: solo las visibles que tienen productos.
+  let categoryPages: MetadataRoute.Sitemap = [];
+  try {
+    const rows = await loadCategoryRows();
+    const counts = new Map<string, number>();
+    for (const p of topLevel) if (p.categoryId) counts.set(p.categoryId, (counts.get(p.categoryId) ?? 0) + 1);
+    const tree = dropEmptyCategories(withProductCounts(buildCategoryTree(rows, { onlyVisible: true }), counts));
+    const flat = (nodes: CategoryNode[]): CategoryNode[] => nodes.flatMap((n) => [n, ...flat(n.children)]);
+    categoryPages = flat(tree).map((category) => ({
+      url: `${siteUrl}${categoryHref(category.slug)}`,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }));
+  } catch {
+    categoryPages = [];
+  }
+
+  return [...staticPages, ...signPages, ...articlePages, ...categoryPages, ...productPages];
 }
