@@ -1,230 +1,298 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { DeleteArticleButton } from "@/components/admin/DeleteArticleButton";
-import { formatPublicationDateTime, getPublicationStatus } from "@/lib/publication";
-import { getViewStats, type ArticleViewStats } from "@/lib/views";
-import { TrackedLinkMenu } from "@/components/admin/TrackedLinkMenu";
+import { ConstellationEye } from "@/components/ConstellationEye";
+import { ArticleCard } from "@/components/ArticleCard";
+import { NextEventWidget } from "@/components/NextEventWidget";
+import { NewsletterForm } from "@/components/NewsletterForm";
+import { SocialLinks } from "@/components/SocialLinks";
+import { prisma, safeQuery } from "@/lib/prisma";
+import { livePublicationFilter } from "@/lib/publication";
+import { signs } from "@/data/signs";
+import { READING_DELIVERY_WINDOW, READING_SERVICES, formatUsd } from "@/lib/lecturas";
+import { getReadingsEnabled } from "@/lib/site-settings";
+import { getPublicHomeAnnouncement } from "@/lib/announcements";
+import { HomeAnnouncementCard } from "@/components/HomeAnnouncementCard";
 
 export const dynamic = "force-dynamic";
 
-type ArticleRowData = {
-  id: string;
-  title: string;
-  slug: string;
-  category: string;
-  published: boolean;
-  publishedAt: Date | null;
-};
-
-const STATUS_STYLES = {
-  draft: { label: "Borrador", className: "bg-gold/15 text-gold-dim" },
-  scheduled: { label: "Programado", className: "bg-gold/25 text-gold-bright" },
-  published: { label: "Publicado", className: "bg-green-800/40 text-green-300" },
-} as const;
-
-const NUMBER_FORMAT = new Intl.NumberFormat("es-AR");
-
-function ArticleRow({
-  article,
-  now,
-  stats,
-}: {
-  article: ArticleRowData;
-  now: Date;
-  stats?: ArticleViewStats;
-}) {
-  const status = getPublicationStatus(article, now);
-  const style = STATUS_STYLES[status];
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gold/15 bg-noir-surface/40 p-5">
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          <span className={`rounded-full px-2.5 py-0.5 font-ui text-xs uppercase tracking-wide ${style.className}`}>
-            {style.label}
-          </span>
-          <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">{article.category}</span>
-        </div>
-        <h3 className="font-display text-lg text-gold-pale">{article.title}</h3>
-        <p className="font-ui text-xs text-gold-dim">/blog/{article.slug}</p>
-        {status !== "draft" && article.publishedAt && (
-          <p className="mt-1 font-ui text-xs text-gold-dim">
-            {status === "scheduled" ? "Se publica: " : "Publicado: "}
-            {formatPublicationDateTime(article.publishedAt)}
-          </p>
-        )}
-        {status === "published" && (
-          <p className="mt-1 font-ui text-xs text-gold-pale/80">
-            <span className="text-gold">{NUMBER_FORMAT.format(stats?.total ?? 0)}</span>{" "}
-            {(stats?.total ?? 0) === 1 ? "vista" : "vistas"} en total ·{" "}
-            <span className="text-gold">{NUMBER_FORMAT.format(stats?.last7 ?? 0)}</span> en los últimos 7 días ·{" "}
-            <span className="text-gold">{NUMBER_FORMAT.format(stats?.last30 ?? 0)}</span> en los últimos 30
-          </p>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        {status === "published" && <TrackedLinkMenu path={`/blog/${article.slug}`} />}
-        <Link
-          href={`/admin/articulos/${article.id}`}
-          className="focus-ring rounded-full border border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
-        >
-          Editar
-        </Link>
-        <DeleteArticleButton id={article.id} title={article.title} />
-      </div>
-    </div>
+export default async function HomePage() {
+  const articles = await safeQuery(() =>
+    prisma.article.findMany({
+      where: livePublicationFilter(),
+      orderBy: { publishedAt: "desc" },
+      take: 7,
+    })
   );
-}
-
-export default async function AdminDashboard({
-  searchParams,
-}: {
-  searchParams?: { guardado?: string };
-}) {
-  const now = new Date();
-  const articles = await prisma.article.findMany({
-    orderBy: { updatedAt: "desc" },
-  });
-  const viewStats = await getViewStats(now);
-
-  // Los 5 artículos más leídos de los últimos 30 días (solo los que ya tuvieron vistas).
-  const topArticles = articles
-    .filter((a) => (viewStats.get(a.id)?.last30 ?? 0) > 0)
-    .sort((a, b) => (viewStats.get(b.id)?.last30 ?? 0) - (viewStats.get(a.id)?.last30 ?? 0))
-    .slice(0, 5);
-
-  // Programados: los que todavía no llegaron a su fecha, del más próximo al más lejano.
-  const scheduled = articles
-    .filter((a) => getPublicationStatus(a, now) === "scheduled")
-    .sort((a, b) => (a.publishedAt?.getTime() ?? 0) - (b.publishedAt?.getTime() ?? 0));
-  const rest = articles.filter((a) => getPublicationStatus(a, now) !== "scheduled");
-
-  // Confirmación del último guardado: se arma con lo que realmente hay en la base de datos.
-  const savedId = typeof searchParams?.guardado === "string" ? searchParams.guardado : "";
-  const savedArticle = savedId ? articles.find((a) => a.id === savedId) : undefined;
-  const savedStatus = savedArticle ? getPublicationStatus(savedArticle, now) : null;
+  const [featured, ...rest] = articles;
+  // Último tránsito semanal publicado: si no hay ninguno, la sección no se muestra.
+  const transit = await safeQuery(() =>
+    prisma.article.findFirst({
+      where: { ...livePublicationFilter(), category: "transitos-semanales" },
+      orderBy: { publishedAt: "desc" },
+    })
+  );
+  // Las lecturas solo se muestran en la portada cuando se publican desde el panel.
+  const readingsEnabled = await getReadingsEnabled();
+  // La novedad (agendas en Amazon) solo se muestra cuando se activa desde el panel; si no, la portada queda igual que siempre.
+  const announcement = await getPublicHomeAnnouncement();
 
   return (
-    <div>
-      {savedId && savedArticle && savedStatus && (
-        <div
-          role="status"
-          className="mb-8 rounded-xl border border-green-800/50 bg-green-900/20 px-5 py-4 font-ui text-sm text-green-300"
-        >
-          <strong className="font-medium">Guardado. </strong>
-          {savedStatus === "draft" && <>«{savedArticle.title}» quedó como borrador.</>}
-          {savedStatus === "scheduled" && savedArticle.publishedAt && (
-            <>
-              «{savedArticle.title}» quedó programado para el {formatPublicationDateTime(savedArticle.publishedAt)} (hora de
-              Argentina). Lo encuentras en el desplegable «Próximas publicaciones».
-            </>
-          )}
-          {savedStatus === "published" && <>«{savedArticle.title}» está publicado.</>}
-        </div>
-      )}
-      {savedId && !savedArticle && (
-        <div
-          role="alert"
-          className="mb-8 rounded-xl border border-wine/50 bg-wine/10 px-5 py-4 font-ui text-sm text-wine-bright"
-        >
-          <strong className="font-medium">Atención: </strong>
-          el servidor confirmó el guardado, pero ese artículo no aparece en la base de datos. Anota la hora exacta y revisa
-          los registros (logs) de Vercel antes de seguir.
-        </div>
-      )}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Link href="/admin/estadisticas" className="rounded-xl border border-gold/15 bg-noir-surface/40 p-5 transition hover:border-gold/40">
-          <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Visitas</p>
-          <h2 className="mt-1 font-display text-xl text-gold-pale">Estadísticas →</h2>
-        </Link>
-        <Link href="/admin/planes" className="rounded-xl border border-gold/15 bg-noir-surface/40 p-5 transition hover:border-gold/40">
-          <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Monetización</p>
-          <h2 className="mt-1 font-display text-xl text-gold-pale">Planes de membresía →</h2>
-        </Link>
-        <Link href="/admin/productos" className="rounded-xl border border-gold/15 bg-noir-surface/40 p-5 transition hover:border-gold/40">
-          <p className="font-ui text-xs uppercase tracking-wide text-gold-dim">Monetización</p>
-          <h2 className="mt-1 font-display text-xl text-gold-pale">Productos (PDFs) →</h2>
-        </Link>
+    <>
+      {/* Próximo evento cósmico — visible arriba de todo solo en mobile */}
+      <div className="mx-auto max-w-6xl px-5 pt-6 lg:hidden">
+        <NextEventWidget />
       </div>
 
-      {topArticles.length > 0 && (
-        <section className="mb-8 rounded-xl border border-gold/15 bg-noir-surface/40 p-5">
-          <h2 className="font-display text-lg text-gold-pale">Más leídos · últimos 30 días</h2>
-          <ol className="mt-3 space-y-1.5">
-            {topArticles.map((a, i) => (
-              <li key={a.id} className="flex items-baseline justify-between gap-4 font-ui text-sm">
-                <span className="truncate text-gold-pale/90">
-                  <span className="mr-2 text-gold-dim">{i + 1}.</span>
-                  {a.title}
+      {/* Hero */}
+      <section className="relative overflow-hidden px-5 pb-20 pt-10 sm:pt-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            {/* Aviso discreto de la novedad: lleva a la tarjeta que está debajo del encabezado */}
+            {announcement && (
+              <a
+                href="#novedad-portada"
+                className="focus-ring group mb-6 inline-flex max-w-full items-center gap-2.5 rounded-2xl border border-gold/50 bg-gold/10 px-4 py-2 font-ui text-[11px] font-medium uppercase leading-snug tracking-wide text-gold-pale transition hover:border-gold hover:bg-gold/20 sm:text-xs"
+              >
+                <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
                 </span>
-                <span className="shrink-0 text-gold">
-                  {NUMBER_FORMAT.format(viewStats.get(a.id)?.last30 ?? 0)}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-3xl text-gold-pale">Artículos</h1>
-        <Link
-          href="/admin/articulos/nuevo"
-          className="focus-ring rounded-full bg-gold px-5 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
-        >
-          + Nuevo artículo
-        </Link>
-      </div>
-
-      {articles.length === 0 && (
-        <p className="font-body text-lg text-gold-dim">Todavía no creaste ningún artículo.</p>
-      )}
-
-      {/* Desplegable con todo lo programado. Siempre se muestra (aunque esté vacío) para que se sepa dónde mirar. */}
-      <details open className="group mb-10 rounded-xl border border-gold/20 bg-noir-surface/30">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
-          <span className="flex flex-wrap items-center gap-3">
-            <span aria-hidden="true" className="text-gold transition-transform group-open:rotate-90">
-              ▸
-            </span>
-            <span className="font-display text-xl text-gold-pale">Próximas publicaciones</span>
-            <span className="rounded-full bg-gold/25 px-2.5 py-0.5 font-ui text-xs uppercase tracking-wide text-gold-bright">
-              {scheduled.length} {scheduled.length === 1 ? "programado" : "programados"}
-            </span>
-          </span>
-          {scheduled[0]?.publishedAt && (
-            <span className="hidden font-ui text-xs text-gold-dim sm:block">
-              Próximo: {formatPublicationDateTime(scheduled[0].publishedAt)}
-            </span>
-          )}
-        </summary>
-        <div className="space-y-3 border-t border-gold/15 p-5">
-          {scheduled.length === 0 ? (
-            <p className="font-ui text-sm text-gold-dim">
-              No hay artículos programados. Al elegir una fecha futura y pulsar «Programar publicación», aparecerán acá.
+                <span>{announcement.pill || announcement.title}</span>
+                <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
+            )}
+            <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">
+              Astrología · Tarot · Psicología astrológica
             </p>
-          ) : (
-            <>
-              <p className="font-ui text-xs text-gold-dim">
-                Ordenados por fecha. Se publican solos a la hora indicada (hora de Argentina).
-              </p>
-              {scheduled.map((a) => (
-                <ArticleRow key={a.id} article={a} now={now} stats={viewStats.get(a.id)} />
-              ))}
-            </>
-          )}
-        </div>
-      </details>
+            <h1 className="mt-5 font-display text-4xl leading-tight text-gold-pale sm:text-5xl lg:text-6xl">
+              Revelando lo <span className="italic text-gold">invisible</span>
+            </h1>
+            <p className="mt-6 max-w-xl font-body text-xl leading-relaxed text-gold-pale/85">
+              Lunaciones, eclipses y aspectos planetarios explicados por astrólogos y tarotistas
+              en ejercicio — sin fórmulas genéricas ni horóscopos de relleno.
+            </p>
+            {/* Orden por importancia: tienda, blog, membresía y, al final, efemérides.
+                En celular los botones ocupan todo el ancho (mismo tamaño, fáciles de tocar);
+                en pantallas más grandes forman una grilla de 2 x 2 prolija. */}
+            <div className="mt-9 grid gap-3 sm:max-w-xl sm:grid-cols-2">
+              {readingsEnabled && (
+                <Link
+                  href="/lecturas"
+                  className="focus-ring rounded-full bg-gold px-6 py-3.5 text-center font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright sm:col-span-2"
+                >
+                  Pide tu lectura personalizada
+                </Link>
+              )}
+              <Link
+                href="/tienda"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Tienda
+              </Link>
+              <Link
+                href="/blog"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Explorar el blog
+              </Link>
+              <Link
+                href="/membresia"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Sumate a la membresía
+              </Link>
+              <Link
+                href="/efemerides"
+                className="focus-ring rounded-full border border-gold/50 px-6 py-3 text-center font-ui text-sm font-medium uppercase tracking-wide text-gold transition hover:border-gold hover:bg-gold/10"
+              >
+                Ver efemérides
+              </Link>
+            </div>
+          </div>
 
-      {scheduled.length > 0 && rest.length > 0 && (
-        <h2 className="mb-4 font-display text-xl text-gold-pale">Resto de los artículos</h2>
+          <div className="flex justify-center lg:justify-end">
+            <ConstellationEye size={280} className="drop-shadow-[0_0_45px_rgba(201,162,75,0.25)]" />
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-6xl px-5">
+        <div className="gold-line" />
+      </div>
+
+      {/* Novedad de la portada (agendas en Amazon): solo visible cuando se activa desde el panel */}
+      {announcement && (
+        <>
+          <section id="novedad-portada" className="mx-auto max-w-6xl scroll-mt-36 px-5 py-14 sm:scroll-mt-24">
+            <HomeAnnouncementCard content={announcement} />
+          </section>
+
+          <div className="mx-auto max-w-6xl px-5">
+            <div className="gold-line" />
+          </div>
+        </>
       )}
 
-      <div className="space-y-3">
-        {rest.map((a) => (
-          <ArticleRow key={a.id} article={a} now={now} stats={viewStats.get(a.id)} />
-        ))}
+      {/* Lecturas personalizadas: solo visibles cuando se publican desde el panel */}
+      {readingsEnabled && (
+      <>
+      <section className="mx-auto max-w-6xl px-5 py-16" aria-labelledby="home-lecturas">
+        <div className="max-w-2xl">
+          <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Lecturas personalizadas</p>
+          <h2 id="home-lecturas" className="mt-2 font-display text-3xl text-gold-pale sm:text-4xl">
+            Tu carta, leída como un mapa de tu psique
+          </h2>
+          <p className="mt-4 font-body text-xl leading-relaxed text-gold-pale/85">
+            Astrología humanista y mirada arquetípica, escrita para ti. La recibes en PDF por correo en un plazo de{" "}
+            {READING_DELIVERY_WINDOW} desde la confirmación del pago.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {READING_SERVICES.map((s) => (
+            <Link
+              key={s.key}
+              href={`/lecturas?servicio=${s.key}#pedido`}
+              className="focus-ring group flex flex-col rounded-3xl border border-gold/25 bg-noir-surface/50 p-7 transition hover:border-gold hover:bg-noir-surface"
+            >
+              <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">{s.eyebrow}</p>
+              <h3 className="mt-2 font-display text-2xl text-gold-pale">{s.name}</h3>
+              <p className="mt-3 font-body text-lg leading-relaxed text-gold-pale/85">{s.summary}</p>
+              <p className="mt-5 flex items-center justify-between font-ui text-sm">
+                <span className="font-display text-2xl text-gold">{formatUsd(s.priceUsd)}</span>
+                <span className="uppercase tracking-wide text-gold group-hover:text-gold-bright">{s.cta} →</span>
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-6xl px-5">
+        <div className="gold-line" />
       </div>
-    </div>
+      </>
+      )}
+
+      {/* Tránsitos de la semana: solo si hay uno publicado */}
+      {transit && (
+        <>
+          <section className="mx-auto max-w-6xl px-5 py-14" aria-labelledby="home-transitos">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Cada semana</p>
+                <h2 id="home-transitos" className="mt-1 font-display text-2xl text-gold-pale">
+                  Tránsitos de la semana
+                </h2>
+              </div>
+              <Link
+                href="/blog?categoria=transitos-semanales"
+                className="font-ui text-sm text-gold hover:text-gold-bright"
+              >
+                Ver todos →
+              </Link>
+            </div>
+            <div className="grid items-center gap-8 md:grid-cols-2">
+              <ArticleCard article={transit} />
+              <p className="font-body text-xl leading-relaxed text-gold-pale/85">
+                Qué se mueve en el cielo esta semana y cómo se vive: lunaciones, aspectos y estaciones
+                planetarias, explicados día por día.
+              </p>
+            </div>
+          </section>
+
+          <div className="mx-auto max-w-6xl px-5">
+            <div className="gold-line" />
+          </div>
+        </>
+      )}
+
+      {/* Destacado + próximo evento */}
+      <section className="mx-auto max-w-6xl px-5 py-16">
+        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+          {featured && <ArticleCard article={featured} size="lg" />}
+          <div className="hidden lg:block">
+            <NextEventWidget />
+          </div>
+        </div>
+      </section>
+
+      {/* Grid de artículos recientes */}
+      <section className="mx-auto max-w-6xl px-5 py-6">
+        <div className="mb-8 flex items-end justify-between">
+          <h2 className="font-display text-2xl text-gold-pale">Lo último del blog</h2>
+          <Link href="/blog" className="font-ui text-sm text-gold hover:text-gold-bright">
+            Ver todo el blog →
+          </Link>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {rest.map((a) => (
+            <ArticleCard key={a.slug} article={a} />
+          ))}
+        </div>
+      </section>
+
+      {/* Membresía: invitación destacada */}
+      <section className="mx-auto max-w-6xl px-5 py-14" aria-labelledby="home-membresia">
+        <div className="rounded-3xl border-2 border-gold bg-gold/10 px-8 py-12 text-center sm:px-16">
+          <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Membresía</p>
+          <h2 id="home-membresia" className="mx-auto mt-3 max-w-xl font-display text-3xl text-gold-pale sm:text-4xl">
+            Leé el cielo completo
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg font-body text-xl leading-relaxed text-gold-pale/85">
+            Artículos premium, efemérides completas y el boletín quincenal incluido, todo en un mismo lugar.
+          </p>
+          <Link
+            href="/membresia"
+            className="focus-ring mt-8 inline-block rounded-full bg-gold px-9 py-3.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright"
+          >
+            Conocer la membresía
+          </Link>
+        </div>
+      </section>
+
+      {/* Redes y canales: franja discreta, pensada para no competir con el contenido */}
+      <section className="mx-auto max-w-6xl px-5 pb-6 pt-14" aria-labelledby="home-redes">
+        <div className="flex flex-col items-center gap-4 border-y border-gold/15 py-8 text-center">
+          <div>
+            <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">Más Zodiac Noir</p>
+            <h2 id="home-redes" className="mt-1.5 font-body text-lg text-gold-pale/85">
+              Seguí la conversación en video, audio y redes.
+            </h2>
+          </div>
+          <SocialLinks variant="strip" />
+        </div>
+      </section>
+
+      {/* Signos */}
+      <section className="mx-auto max-w-6xl px-5 py-20">
+        <h2 className="mb-8 font-display text-2xl text-gold-pale">Los doce signos</h2>
+        <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+          {signs.map((s) => (
+            <Link
+              key={s.slug}
+              href={`/signos/${s.slug}`}
+              className="group flex flex-col items-center gap-2 rounded-xl border border-gold/15 bg-noir-surface/30 p-5 text-center transition hover:border-gold/50 hover:bg-noir-surface"
+            >
+              <span className="font-display text-3xl text-gold group-hover:text-gold-bright">{s.glyph}</span>
+              <span className="font-ui text-xs uppercase tracking-wide text-gold-pale/85">{s.name}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Newsletter */}
+      <section className="mx-auto max-w-6xl px-5 py-20">
+        <div className="rounded-3xl border border-gold/25 bg-noir-surface/50 p-10 text-center sm:p-16">
+          <p className="font-ui text-xs uppercase tracking-widest2 text-gold-dim">El boletín</p>
+          <h2 className="mx-auto mt-3 max-w-xl font-display text-3xl text-gold-pale sm:text-4xl">
+            Las lunaciones y retrogradaciones, antes de que sucedan
+          </h2>
+          <p className="mx-auto mt-4 max-w-md font-body text-lg text-gold-pale/80">
+            Un correo quincenal, sin spam, con las efemérides que importan y una lectura de fondo.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <NewsletterForm />
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
