@@ -158,9 +158,48 @@ model Product {
   // Preguntas frecuentes: lista de { question, answer }. Se muestran en la página del producto y alimentan el schema FAQPage.
   faq                  Json       @default("[]")
   published            Boolean    @default(true)
+  // --- Organización de la tienda ---
+  // Categoría (o subcategoría) en la que aparece el producto. Si está vacío, la tienda lo ubica según "kind".
+  categoryId           String?
+  category             StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  // "Colección con varios diseños": un producto principal con UNA sola descripción (fotos, textos,
+  // preguntas, video) y varios diseños para elegir. La colección no se compra: se compran sus diseños.
+  isCollection         Boolean    @default(false)
+  // Si tiene valor, este producto es un DISEÑO de la colección indicada: tiene su propia portada,
+  // precio y PDF, y hereda la descripción y los textos de la colección.
+  parentId             String?
+  parent               Product?   @relation("ProductDesigns", fields: [parentId], references: [id], onDelete: SetNull)
+  designs              Product[]  @relation("ProductDesigns")
+  // Nombre corto del diseño que ve la compradora (ej. "Minimal · A4 · semana en una página").
+  variantLabel         String?
   createdAt            DateTime   @default(now())
   purchases            Purchase[]
   featuredInArticles   Article[]
+
+  @@index([categoryId])
+  @@index([parentId])
+}
+
+// Categorías de la tienda, en dos niveles: categoría → subcategoría (ej. Imprimibles → Calendarios).
+// Se crean y se ordenan desde /admin/categorias. "visible" = false oculta la categoría (y todo lo que
+// contiene) de la tienda; los productos siguen abriendo por su enlace directo.
+model StoreCategory {
+  id          String          @id @default(cuid())
+  // Parte de la dirección (/tienda/categoria/<slug>). No cambia después de crearla, para no romper enlaces.
+  slug        String          @unique
+  name        String
+  description String?         @db.Text
+  image       String?
+  parentId    String?
+  parent      StoreCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    StoreCategory[] @relation("CategoryTree")
+  sortOrder   Int             @default(0)
+  visible     Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  products    Product[]
+
+  @@index([parentId, sortOrder])
 }
 
 model Purchase {
@@ -295,4 +334,26 @@ model StoreView {
 
   @@unique([target, day])
   @@index([day])
+}
+
+// Visitas de TODO el sitio, un número por día, página, fuente y campaña (sin datos personales).
+// path = "/" (inicio), "/tienda", "/blog/<slug>", "/tienda/<slug>", etc. ("otras" agrupa lo demás).
+// source = de dónde llegó la visita: "youtube", "instagram", "busqueda", "directo", "otros"…
+// campaign = nombre opcional que se pone en el link (por ejemplo "video-eclipse").
+// views = veces que se abrió la página (una por página y por pestaña).
+// entries = veces que alguien empezó su visita al sitio en esa página.
+// Se suma desde /api/track y se lee en /admin/estadisticas.
+model PageView {
+  id       String @id @default(cuid())
+  // Día en horario de Argentina, formato AAAA-MM-DD
+  day      String
+  path     String
+  source   String
+  campaign String @default("")
+  views    Int    @default(0)
+  entries  Int    @default(0)
+
+  @@unique([day, path, source, campaign])
+  @@index([day])
+  @@index([path])
 }
