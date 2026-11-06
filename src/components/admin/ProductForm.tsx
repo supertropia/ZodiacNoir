@@ -293,8 +293,8 @@ export function ProductForm({
                 </div>
                 <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 font-ui text-xs leading-relaxed text-gold-pale/85">
                   Este diseño usa la descripción, «Para quién es esto», las tarjetas de contenido, los testimonios, las
-                  preguntas frecuentes, el video y el SEO de la colección. Aquí solo completas lo propio de este diseño:
-                  portada, imágenes, precio y archivo PDF. Va siempre en la categoría de su colección.
+                  preguntas frecuentes y el SEO de la colección. Aquí solo completas lo propio de este diseño:
+                  portada, imágenes, precio, archivo PDF y, si quieres, su propio video. Va siempre en la categoría de su colección.
                 </p>
               </>
             )}
@@ -514,16 +514,19 @@ export function ProductForm({
         </label>
       </div>
 
-      {mode !== "design" && (
       <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Video de presentación (opcional)</p>
+        <p className="font-display text-sm text-gold-pale">
+          {mode === "design" ? "Video de este diseño (opcional)" : "Video de presentación (opcional)"}
+        </p>
         <p className="font-ui text-xs text-gold-dim">
-          Se muestra en la ficha pública del producto, debajo de la portada y los botones de compra, con el título «Mira la presentación».
-          Si no cargas un video, esa sección no aparece.
+          {mode === "design"
+            ? "Se muestra en la ficha cuando la compradora elige este diseño, debajo de la portada y los botones de compra, con el título «Mira la presentación». Si no cargas un video, se muestra el de la colección (si tiene uno)."
+            : mode === "collection"
+              ? "Se muestra en la ficha, debajo de la portada y los botones de compra, con el título «Mira la presentación». Lo usan los diseños que no tengan su propio video. Si no cargas un video, esa sección no aparece."
+              : "Se muestra en la ficha pública del producto, debajo de la portada y los botones de compra, con el título «Mira la presentación». Si no cargas un video, esa sección no aparece."}
         </p>
         <VideoUploadField value={values.videoUrl} onChange={(url) => set("videoUrl", url)} onBusyChange={setVideoBusy} />
       </div>
-      )}
 
       {mode !== "design" && (
       <div className={sectionClass}>
