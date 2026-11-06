@@ -548,7 +548,7 @@ export function ProductDetail({
       {product.videoUrl && (
         <section className={SECTION_CLASS}>
           <SectionTag className={SECTION_TITLE_CLASS}>Mira la presentación</SectionTag>
-          <ProductVideo src={product.videoUrl} title={product.title} />
+          <ProductVideo key={product.videoUrl} src={product.videoUrl} title={product.title} />
         </section>
       )}
 
