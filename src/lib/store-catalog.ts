@@ -9,6 +9,7 @@ import {
   EBOOKS_SLUG,
   PRINTABLES_SLUG,
   buildCategoryTree,
+  categoryIdsOf,
   dropEmptyCategories,
   ensureDefaultCategories,
   loadCategoryRows,
@@ -92,7 +93,25 @@ export async function loadStoreCatalog(
     if (model.categoryId) counts.set(model.categoryId, (counts.get(model.categoryId) ?? 0) + 1);
   }
 
-  const tree = dropEmptyCategories(withProductCounts(buildCategoryTree(rows, { onlyVisible: true }), counts));
+  const baseTree = dropEmptyCategories(withProductCounts(buildCategoryTree(rows, { onlyVisible: true }), counts));
+
+  // Una categoría sin imagen propia usa la portada de su producto más nuevo (o de uno de sus diseños),
+  // así las tarjetas nunca quedan con el adorno vacío. Si subes una imagen en Admin › Categorías, esa manda.
+  const productImage = (model: ProductViewModel): string | null => {
+    const own = model.coverImage ?? model.heroImage;
+    if (own) return own;
+    const design = model.designs.find((d) => d.coverImage ?? d.heroImage);
+    return design ? (design.coverImage ?? design.heroImage ?? null) : null;
+  };
+  const withFallbackImages = (nodes: CategoryNode[]): CategoryNode[] =>
+    nodes.map((node) => {
+      const children = withFallbackImages(node.children);
+      if (node.image) return { ...node, children };
+      const ids = new Set(categoryIdsOf(node));
+      const match = viewModels.find((model) => model.categoryId !== null && ids.has(model.categoryId) && productImage(model));
+      return { ...node, children, image: match ? productImage(match) : null };
+    });
+  const tree = withFallbackImages(baseTree);
 
   return {
     tree,
