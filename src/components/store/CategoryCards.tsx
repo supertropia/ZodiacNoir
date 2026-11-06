@@ -15,15 +15,27 @@ export function CategoryCards({ categories }: { categories: CategoryNode[] }) {
       {categories.map((category) => (
         <li key={category.id}>
           <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gold/25 bg-noir-bg transition duration-300 focus-within:ring-2 focus-within:ring-gold/50 hover:-translate-y-1 hover:border-gold/60 hover:shadow-[0_18px_40px_-18px_rgba(38,24,63,0.35)]">
-            <div className="flex aspect-[16/8] items-center justify-center overflow-hidden bg-gradient-to-br from-noir-surface to-noir-surface2">
+            <div className="relative flex aspect-[16/8] items-center justify-center overflow-hidden bg-gradient-to-br from-noir-surface to-noir-surface2">
               {category.image ? (
-                <img
-                  src={category.image}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                />
+                <>
+                  {/* Fondo desenfocado con la misma imagen y la imagen completa encima: se ve entera, sin recortes,
+                      tenga la forma que tenga (portada alta o foto horizontal). */}
+                  <img
+                    src={category.image}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-2xl"
+                  />
+                  <img
+                    src={category.image}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="relative h-full w-full object-contain transition duration-500 group-hover:scale-[1.03]"
+                  />
+                </>
               ) : (
                 <span className="font-display text-6xl text-gold/50" aria-hidden="true">
                   ✦
