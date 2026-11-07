@@ -3,10 +3,10 @@
 import { useState, type ReactNode } from "react";
 
 // Estilo de los botones de pago con los colores de cada plataforma, para que se reconozcan de un vistazo.
-// - Mercado Pago: azul de la marca con texto blanco.
-// - PayPal: amarillo de la marca con texto oscuro (ver PAYPAL_BUTTON_CLASS en PaypalButton.tsx).
+// - Mercado Pago: amarillo de la marca con texto azul oscuro.
+// - PayPal: celeste con texto azul oscuro (ver PAYPAL_BUTTON_CLASS en PaypalButton.tsx).
 export const MERCADOPAGO_BUTTON_CLASS =
-  "focus-ring w-full rounded-full bg-[#009EE3] px-5 py-2.5 text-center font-ui text-sm font-semibold text-white transition hover:bg-[#0087C5] disabled:opacity-60";
+  "focus-ring w-full min-h-[3.75rem] rounded-full bg-[#FFE600] px-5 py-2.5 text-center font-ui text-sm font-semibold text-[#2D3277] transition hover:bg-[#F2D900] disabled:opacity-60";
 
 export type PaymentBrandName = "paypal" | "mercadopago";
 
