@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ShareButtons } from "@/components/ShareButtons";
 import { FormattedText } from "@/components/store/FormattedText";
 import { htmlToPlain, looksLikeHtml } from "@/lib/html-text";
 import { StoreViewTracker } from "@/components/store/StoreViewTracker";
-import { ProductVideo } from "@/components/store/ProductVideo";
+import { DescriptionCards } from "@/components/store/DescriptionCards";
+import { RelatedProducts } from "@/components/store/RelatedProducts";
+import { VideoThumb } from "@/components/store/VideoThumb";
+import { splitDescription } from "@/lib/description-cards";
+import type { RelatedItem } from "@/lib/related-products";
 import type { ProductViewModel } from "@/lib/store-products";
 import { mergeDesign } from "@/lib/store-designs";
 import { PaypalButton } from "@/components/PaypalButton";
@@ -156,6 +160,66 @@ function RichDescription({ text, className }: { text: string; className: string 
 
 const SECTION_CLASS = "mt-10 border-t border-gold/20 pt-8";
 const SECTION_TITLE_CLASS = "mb-5 font-display text-xl text-gold-pale";
+
+/**
+ * Descripción de un producto en dos partes: la introducción (va junto al título) y, si el texto es largo,
+ * las tarjetas deslizables con el resto (van debajo). Si no alcanza para tarjetas, se muestra el texto completo como siempre.
+ */
+function useDescriptionParts(description: string) {
+  return useMemo(() => splitDescription(description), [description]);
+}
+
+function DescriptionIntro({ description, parts }: { description: string; parts: ReturnType<typeof splitDescription> }) {
+  if (parts.cards.length === 0) {
+    return <RichDescription text={description} className="mt-5 font-body leading-relaxed text-gold-pale/85" />;
+  }
+  return (
+    <p className="mt-5 whitespace-pre-line font-body text-lg leading-relaxed text-gold-pale/85">{parts.intro}</p>
+  );
+}
+
+function DescriptionSection({
+  description,
+  parts,
+  Heading,
+  title,
+}: {
+  description: string;
+  parts: ReturnType<typeof splitDescription>;
+  Heading: "h2" | "h3";
+  title: string;
+}) {
+  if (parts.cards.length === 0) return null;
+  return (
+    <section className={SECTION_CLASS}>
+      <Heading className={SECTION_TITLE_CLASS}>{title}</Heading>
+      <DescriptionCards
+        cards={parts.cards}
+        fullText={<RichDescription text={description} className="font-body leading-relaxed text-gold-pale/85" />}
+      />
+    </section>
+  );
+}
+
+/** Portada y, si el producto tiene video, su miniatura al lado (en el celular queda debajo de la portada). */
+function MediaColumn({
+  cover,
+  videoUrl,
+  videoTitle,
+  videoHeading,
+}: {
+  cover: ReactNode;
+  videoUrl: string | null;
+  videoTitle: string;
+  videoHeading: string;
+}) {
+  return (
+    <div className={`grid items-start gap-4 ${videoUrl ? "sm:grid-cols-2" : ""}`}>
+      {cover}
+      {videoUrl && <VideoThumb key={videoUrl} src={videoUrl} title={videoTitle} heading={videoHeading} />}
+    </div>
+  );
+}
 
 // Precio corto de un diseño para su tarjeta de selección.
 function designPriceText(design: ProductViewModel): string {
@@ -719,51 +783,57 @@ type DetailProps = {
   detailRef?: RefObject<HTMLDivElement>;
   // Diseño al que se baja al abrir la ficha (viene del enlace ?diseno=...). Solo se usa en colecciones.
   initialDesignSlug?: string | null;
+  // Productos de la misma categoría para la tira «Productos relacionados».
+  related?: RelatedItem[];
 };
 
 /** Ficha de un producto común (sin diseños). */
-function SingleProduct({ product, titleAs = "h2", shareUrl, pageHref, onClose, onHeroLoad, detailRef }: DetailProps) {
+function SingleProduct({ product, titleAs = "h2", shareUrl, pageHref, onClose, onHeroLoad, detailRef, related }: DetailProps) {
   const Title = titleAs;
   const SectionTag = titleAs === "h1" ? "h2" : "h3";
   const heroSrc = product.heroImage ?? product.coverImage;
   const coverAlt =
     product.coverImageAlt || `Portada de ${product.title}${product.variantLabel ? ` — ${product.variantLabel}` : ""}`;
+  const parts = useDescriptionParts(product.description);
 
   return (
     <div>
       <StoreViewTracker kind="product" slug={product.slug} />
       <TopLinks pageHref={pageHref} onClose={onClose} />
 
-      <div className="grid gap-8 sm:grid-cols-[1fr_1.1fr] sm:gap-10">
-        <div className="mx-auto w-full max-w-xs self-start overflow-hidden rounded-xl border border-gold/20 bg-noir-surface2 shadow-[0_18px_40px_-20px_rgba(38,24,63,0.45)] sm:max-w-none">
-          {heroSrc ? (
-            <img src={heroSrc} alt={coverAlt} onLoad={onHeroLoad} className="block h-auto w-full" />
-          ) : (
-            <div className="flex aspect-[4/5] items-center justify-center font-display text-6xl text-gold/50" aria-hidden="true">
-              ✦
+      <div className={`grid gap-8 sm:gap-10 ${product.videoUrl ? "lg:grid-cols-[1.35fr_1fr]" : "sm:grid-cols-[1fr_1.1fr]"}`}>
+        <MediaColumn
+          videoUrl={product.videoUrl}
+          videoTitle={product.title}
+          videoHeading="Mira la presentación"
+          cover={
+            <div className="mx-auto w-full max-w-xs self-start overflow-hidden rounded-xl border border-gold/20 bg-noir-surface2 shadow-[0_18px_40px_-20px_rgba(38,24,63,0.45)] sm:max-w-none">
+              {heroSrc ? (
+                <img src={heroSrc} alt={coverAlt} onLoad={onHeroLoad} className="block h-auto w-full" />
+              ) : (
+                <div className="flex aspect-[4/5] items-center justify-center font-display text-6xl text-gold/50" aria-hidden="true">
+                  ✦
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          }
+        />
 
         <div ref={detailRef} className="scroll-mt-36 sm:scroll-mt-24">
           <Title className="font-display text-2xl leading-tight text-gold-pale sm:text-3xl">{product.title}</Title>
 
-          <RichDescription text={product.description} className="mt-5 font-body leading-relaxed text-gold-pale/85" />
+          <DescriptionIntro description={product.description} parts={parts} />
 
           <BuyPanel product={product} />
         </div>
       </div>
 
-      {product.videoUrl && (
-        <section className={SECTION_CLASS}>
-          <SectionTag className={SECTION_TITLE_CLASS}>Mira la presentación</SectionTag>
-          <ProductVideo key={product.videoUrl} src={product.videoUrl} title={product.title} />
-        </section>
-      )}
+      <DescriptionSection description={product.description} parts={parts} Heading={SectionTag} title="Lo que incluye este producto" />
 
       <ContentSections product={product} Heading={SectionTag} />
       <GallerySection images={product.galleryImages} title={product.title} Heading={SectionTag} />
       <FaqAndShare product={product} Heading={SectionTag} shareUrl={shareUrl} />
+      <RelatedProducts items={related ?? []} />
     </div>
   );
 }
@@ -825,16 +895,23 @@ function DesignCard({
         </button>
       </div>
 
-      <div className="grid gap-8 sm:grid-cols-[1fr_1.1fr] sm:gap-10">
-        <div className="mx-auto w-full max-w-xs self-start overflow-hidden rounded-xl border border-gold/20 bg-noir-surface2 sm:max-w-none">
-          {heroSrc ? (
-            <img src={heroSrc} alt={coverAlt} loading="lazy" className="block h-auto w-full" />
-          ) : (
-            <div className="flex aspect-[4/5] items-center justify-center font-display text-6xl text-gold/50" aria-hidden="true">
-              ✦
+      <div className={`grid gap-8 sm:gap-10 ${design.videoUrl ? "lg:grid-cols-[1.35fr_1fr]" : "sm:grid-cols-[1fr_1.1fr]"}`}>
+        <MediaColumn
+          videoUrl={design.videoUrl}
+          videoTitle={`${collection.title} — ${name}`}
+          videoHeading="Mira este diseño"
+          cover={
+            <div className="mx-auto w-full max-w-xs self-start overflow-hidden rounded-xl border border-gold/20 bg-noir-surface2 sm:max-w-none">
+              {heroSrc ? (
+                <img src={heroSrc} alt={coverAlt} loading="lazy" className="block h-auto w-full" />
+              ) : (
+                <div className="flex aspect-[4/5] items-center justify-center font-display text-6xl text-gold/50" aria-hidden="true">
+                  ✦
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          }
+        />
 
         <div>
           <CardTitle className="font-display text-2xl leading-tight text-gold-pale">{name}</CardTitle>
@@ -849,13 +926,6 @@ function DesignCard({
           <BuyPanel product={buyProduct} showReview={false} />
         </div>
       </div>
-
-      {design.videoUrl && (
-        <section className={SECTION_CLASS}>
-          <SubTag className={SECTION_TITLE_CLASS}>Mira este diseño</SubTag>
-          <ProductVideo key={design.videoUrl} src={design.videoUrl} title={`${collection.title} — ${name}`} />
-        </section>
-      )}
 
       <GallerySection images={design.galleryImages} title={`${collection.title} — ${name}`} Heading={SubTag} />
 
@@ -881,12 +951,15 @@ function CollectionProduct({
   onHeroLoad,
   detailRef,
   initialDesignSlug,
+  related,
 }: DetailProps) {
   const Title = titleAs;
   const SectionTag = titleAs === "h1" ? "h2" : "h3";
   const designs = product.designs;
   const heroSrc = product.heroImage ?? product.coverImage ?? designs[0]?.heroImage ?? designs[0]?.coverImage;
   const coverAlt = product.coverImageAlt || `Portada de ${product.title}`;
+  const parts = useDescriptionParts(product.description);
+  const mountedAt = useRef(Date.now());
 
   // Diseño abierto (su ficha completa aparece debajo de las tarjetas). Viene del enlace ?diseno=... si lo trae.
   const [openSlug, setOpenSlug] = useState<string | null>(() =>
@@ -930,35 +1003,51 @@ function CollectionProduct({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDesignSlug]);
 
+  // Dentro de /tienda: al abrir la colección, la pantalla baja sola hasta los diseños (si no viene un diseño puntual en el enlace).
+  const scrollToDesigns = () => {
+    document.getElementById("disenos-de-la-coleccion")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const autoScroll = Boolean(onClose) && !initialDesignSlug;
+  useEffect(() => {
+    if (!autoScroll) return;
+    const timer = window.setTimeout(scrollToDesigns, 350);
+    return () => window.clearTimeout(timer);
+  }, [autoScroll]);
+  // La portada es alta y, al terminar de cargar, mueve todo hacia abajo: se vuelve a acomodar (solo en los primeros segundos).
+  const onCoverLoad = () => {
+    if (autoScroll && Date.now() - mountedAt.current < 4000) scrollToDesigns();
+    onHeroLoad?.();
+  };
+
   return (
     <div>
       <StoreViewTracker kind="product" slug={product.slug} />
       <TopLinks pageHref={pageHref} onClose={onClose} />
 
-      <div className="grid gap-8 sm:grid-cols-[1fr_1.1fr] sm:gap-10">
-        <div className="mx-auto w-full max-w-xs self-start overflow-hidden rounded-xl border border-gold/20 bg-noir-surface2 shadow-[0_18px_40px_-20px_rgba(38,24,63,0.45)] sm:max-w-none">
-          {heroSrc ? (
-            <img src={heroSrc} alt={coverAlt} onLoad={onHeroLoad} className="block h-auto w-full" />
-          ) : (
-            <div className="flex aspect-[4/5] items-center justify-center font-display text-6xl text-gold/50" aria-hidden="true">
-              ✦
+      <div className={`grid gap-8 sm:gap-10 ${product.videoUrl ? "lg:grid-cols-[1.35fr_1fr]" : "sm:grid-cols-[1fr_1.1fr]"}`}>
+        <MediaColumn
+          videoUrl={product.videoUrl}
+          videoTitle={product.title}
+          videoHeading="Mira la presentación"
+          cover={
+            <div className="mx-auto w-full max-w-xs self-start overflow-hidden rounded-xl border border-gold/20 bg-noir-surface2 shadow-[0_18px_40px_-20px_rgba(38,24,63,0.45)] sm:max-w-none">
+              {heroSrc ? (
+                <img src={heroSrc} alt={coverAlt} onLoad={onCoverLoad} className="block h-auto w-full" />
+              ) : (
+                <div className="flex aspect-[4/5] items-center justify-center font-display text-6xl text-gold/50" aria-hidden="true">
+                  ✦
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          }
+        />
 
         <div ref={detailRef} className="scroll-mt-36 sm:scroll-mt-24">
           <Title className="font-display text-2xl leading-tight text-gold-pale sm:text-3xl">{product.title}</Title>
 
-          <RichDescription text={product.description} className="mt-5 font-body leading-relaxed text-gold-pale/85" />
+          <DescriptionIntro description={product.description} parts={parts} />
         </div>
       </div>
-
-      {product.videoUrl && (
-        <section className={SECTION_CLASS}>
-          <SectionTag className={SECTION_TITLE_CLASS}>Mira la presentación</SectionTag>
-          <ProductVideo key={product.videoUrl} src={product.videoUrl} title={product.title} />
-        </section>
-      )}
 
       <section id="disenos-de-la-coleccion" className={`${SECTION_CLASS} scroll-mt-24`}>
         <SectionTag className={SECTION_TITLE_CLASS}>
@@ -981,6 +1070,8 @@ function CollectionProduct({
         />
       )}
 
+      <DescriptionSection description={product.description} parts={parts} Heading={SectionTag} title="Lo que incluye esta colección" />
+
       <div className="mt-10 rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-center">
         <p className="font-ui text-sm uppercase tracking-wide text-gold-pale">
           ¿Ya adquiriste este producto? ¡Envíanos tu reseña!
@@ -995,6 +1086,7 @@ function CollectionProduct({
 
       <ContentSections product={product} Heading={SectionTag} />
       <FaqAndShare product={product} Heading={SectionTag} shareUrl={shareUrl} />
+      <RelatedProducts items={related ?? []} />
     </div>
   );
 }
