@@ -7,6 +7,8 @@
 // - Varios «•» en una misma línea ("Sirve para: • A • B • C") también se separan en ítems.
 // - Si un texto largo viene todo seguido, sin ningún salto de línea, se parte solo en párrafos cortos.
 
+import { htmlToPlain, looksLikeHtml } from "@/lib/html-text";
+
 export type TextBlock = { type: "p"; text: string } | { type: "ul"; items: string[] };
 
 // Marcas de viñeta al comienzo de una línea: • · ▪ ● ◦ ‣ - – — * o numeración «1.» / «1)»
@@ -114,6 +116,7 @@ export function parseRichText(raw: string, options?: { autoParagraphs?: boolean 
 
 /** Mismo texto, sin saltos ni viñetas: para tarjetas, descripciones de Google y datos estructurados. */
 export function toPlainText(raw: string): string {
+  if (looksLikeHtml(raw)) return htmlToPlain(raw);
   return (raw ?? "")
     .replace(/\r\n?/g, "\n")
     .split("\n")
