@@ -6,6 +6,7 @@ import { toPlainText } from "@/components/store/FormattedText";
 import type { ProductViewModel } from "@/lib/store-products";
 import { hasPdfOffer, listPriceUsd } from "@/lib/store-designs";
 import { formatUsdAmount } from "@/lib/pricing";
+import { relatedFromViewModels } from "@/lib/related-products";
 
 export type { ProductViewModel } from "@/lib/store-products";
 
@@ -37,7 +38,8 @@ export function ProductGrid({
     const match = products.find((p) => p.slug === initialProductSlug || p.designs.some((d) => d.slug === initialProductSlug));
     if (match) {
       setOpenId(match.id);
-      scrollToDetail(100);
+      // En una colección la pantalla baja sola hasta sus diseños (lo hace la propia ficha).
+      if (match.designs.length === 0) scrollToDetail(100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProductSlug]);
@@ -50,7 +52,9 @@ export function ProductGrid({
   const openLanding = (id: string) => {
     const willOpen = openId !== id;
     setOpenId((current) => (current === id ? null : id));
-    if (willOpen) scrollToDetail(120);
+    // En una colección la pantalla baja sola hasta sus diseños (lo hace la propia ficha).
+    const isCollection = (products.find((p) => p.id === id)?.designs.length ?? 0) > 0;
+    if (willOpen && !isCollection) scrollToDetail(120);
   };
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://zodiacnoirweb.com";
@@ -182,7 +186,8 @@ export function ProductGrid({
                 onClose={() => setOpenId(null)}
                 // La portada es alta y tarda en cargar; una vez que carga, la ficha crece y el título
                 // se corre hacia abajo. Recalculamos el scroll para que el título y los botones queden visibles.
-                onHeroLoad={() => scrollToDetail(0)}
+                onHeroLoad={openProduct.designs.length > 0 ? undefined : () => scrollToDetail(0)}
+                related={relatedFromViewModels(products, openProduct)}
                 detailRef={detalleRef}
                 initialDesignSlug={
                   initialProductSlug && openProduct.designs.some((d) => d.slug === initialProductSlug)
