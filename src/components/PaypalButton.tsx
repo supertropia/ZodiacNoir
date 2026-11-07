@@ -4,11 +4,11 @@ import { useState } from "react";
 import type { PaypalVisibility } from "@/lib/paypal-access";
 import { BrandLabel } from "@/components/PaymentBrand";
 
-// Botón amarillo de PayPal. Envía el pedido al servidor, que crea el pago en PayPal y devuelve la
+// Botón celeste de PayPal. Envía el pedido al servidor, que crea el pago en PayPal y devuelve la
 // dirección a la que hay que llevar a la persona para aprobarlo. En modo "preview" solo lo ve la
 // administración (con una etiqueta que lo aclara) y el servidor igual exige ser administradora.
 export const PAYPAL_BUTTON_CLASS =
-  "focus-ring w-full rounded-full bg-[#FFC439] px-5 py-2.5 text-center font-ui text-sm font-semibold text-[#111111] transition hover:bg-[#F2B72D] disabled:opacity-60";
+  "focus-ring w-full min-h-[3.75rem] rounded-full bg-[#7CCBF2] px-5 py-2.5 text-center font-ui text-sm font-semibold text-[#0B2A4A] transition hover:bg-[#62BDEA] disabled:opacity-60";
 
 export function PreviewTag() {
   return (
