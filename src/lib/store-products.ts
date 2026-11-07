@@ -7,6 +7,8 @@ import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
 import { parseFaq, type FaqItem } from "@/lib/seo";
 import { estimateArs } from "@/lib/pricing";
 import type { PaypalVisibility } from "@/lib/paypal-access";
+import { looksLikeHtml } from "@/lib/html-text";
+import { sanitizeArticleHtml } from "@/lib/sanitize-html";
 
 export type ContentHighlight = { title: string; description: string };
 export type Testimonial = { name: string; stars: number; text: string; shared: number };
@@ -86,7 +88,8 @@ export async function toProductViewModel(
     id: product.id,
     slug: product.slug,
     title: product.title,
-    description: product.description,
+    // Si la descripción viene del editor visual (HTML), se limpia otra vez acá antes de mostrarla.
+    description: looksLikeHtml(product.description) ? sanitizeArticleHtml(product.description) : product.description,
     priceLabel: product.priceLabel,
     priceArs: product.priceArs,
     priceUsd: product.priceUsd,
