@@ -7,6 +7,10 @@ import { slugify } from "@/lib/slugify";
 import { ProductSeoSection } from "@/components/admin/ProductSeoSection";
 import { FormattedText } from "@/components/store/FormattedText";
 import { VideoUploadField } from "@/components/admin/VideoUploadField";
+import { TrackedLinkMenu } from "@/components/admin/TrackedLinkMenu";
+import { FormSection } from "@/components/admin/FormSection";
+import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { descriptionToEditorHtml, isDescriptionEmpty } from "@/lib/product-description";
 import type { FaqItem } from "@/lib/seo";
 
 type ContentHighlight = { title: string; description: string };
@@ -91,7 +95,10 @@ export function ProductForm({
   const router = useRouter();
   const isEditing = Boolean(initial?.id);
   const [values, setValues] = useState<ProductFormValues>(
-    initial ?? { ...emptyValues, parentId: defaultParentId && collections.some((c) => c.id === defaultParentId) ? defaultParentId : "" }
+    initial
+      ? // En un diseño, el texto «Lo que hace especial» es texto simple: no pasa por el editor visual.
+        { ...initial, description: initial.parentId ? initial.description : descriptionToEditorHtml(initial.description) }
+      : { ...emptyValues, parentId: defaultParentId && collections.some((c) => c.id === defaultParentId) ? defaultParentId : "" }
   );
   const [slugTouched, setSlugTouched] = useState(isEditing);
   // El tipo de producto sale de dos datos: si tiene colección es un diseño; si está marcado, es una colección.
@@ -197,6 +204,10 @@ export function ProductForm({
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (mode !== "design" && isDescriptionEmpty(values.description)) {
+      setError("Escribe la descripción del producto.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -228,22 +239,35 @@ export function ProductForm({
   const labelClass = "mb-1.5 block font-ui text-xs uppercase tracking-wide text-gold-dim";
   const uploadBtnClass =
     "focus-ring shrink-0 cursor-pointer rounded-lg border border-gold/40 px-3 py-2.5 font-ui text-xs uppercase tracking-wide text-gold hover:bg-gold/10";
-  const sectionClass = "space-y-4 rounded-xl border border-gold/15 p-5";
   const addBtnClass =
     "focus-ring flex items-center gap-1.5 rounded-full border border-dashed border-gold/40 px-4 py-2 font-ui text-xs uppercase tracking-wide text-gold hover:bg-gold/10";
   const removeBtnClass = "font-ui text-xs uppercase tracking-wide text-wine-bright hover:underline";
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      {isEditing && values.slug && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold/25 bg-gold/5 px-5 py-4">
+          <p className="max-w-xl font-ui text-xs leading-relaxed text-gold-pale/85">
+            <span className="block font-medium uppercase tracking-wide text-gold">Link para compartir con seguimiento</span>
+            Elige dónde lo vas a compartir (YouTube, Instagram…) y se copia el link de este{" "}
+            {mode === "design" ? "diseño" : "producto"} con la fuente marcada. Las visitas aparecen en Admin › Estadísticas.
+          </p>
+          <TrackedLinkMenu path={`/tienda/${values.slug}`} label="Copiar link" />
+        </div>
+      )}
       {error && (
-        <div className="rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright">
+        <div role="alert" className="rounded-lg border border-wine/50 bg-wine/10 px-4 py-3 font-ui text-sm text-wine-bright">
           {error}
         </div>
       )}
 
       {/* Tipo de producto: define qué campos se piden y cómo se muestra en la tienda */}
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">¿Qué estás cargando?</p>
+      <FormSection
+        id="tipo"
+        eyebrow="Punto de partida"
+        title="¿Qué estás cargando?"
+        help="Define qué datos se piden más abajo y cómo se muestra en la tienda."
+      >
         <div className="grid gap-3 sm:grid-cols-3" role="group" aria-label="Tipo de producto">
           {MODE_OPTIONS.map((option) => (
             <button
@@ -251,8 +275,8 @@ export function ProductForm({
               type="button"
               aria-pressed={mode === option.value}
               onClick={() => setMode(option.value)}
-              className={`focus-ring rounded-xl border p-4 text-left transition ${
-                mode === option.value ? "border-gold bg-gold/10" : "border-gold/20 hover:border-gold/50"
+              className={`focus-ring rounded-xl border-2 p-4 text-left transition ${
+                mode === option.value ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/60"
               }`}
             >
               <span className="block font-display text-sm text-gold-pale">{option.title}</span>
@@ -291,84 +315,119 @@ export function ProductForm({
                     {parentCollection?.title ?? "tu colección"}» con este diseño seleccionado.
                   </p>
                 </div>
+                <div>
+                  <label className={labelClass} htmlFor="designDetails">Lo que hace especial a este diseño (opcional)</label>
+                  <textarea id="designDetails" rows={6} className={inputClass}
+                    value={values.description} onChange={(e) => set("description", e.target.value)}
+                    placeholder="Ej. Tipografía serif en dorado sobre fondo negro, semana en una página, espacio para notas lunares…" />
+                  <p className="mt-1.5 font-ui text-xs text-gold-dim">
+                    Se muestra en la tarjeta de este diseño, debajo de su portada. Úsalo para lo que lo diferencia de los demás
+                    (estilo, tipografía, colores, formato). La descripción general de la colección no se repite en cada diseño.
+                  </p>
+                </div>
                 <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 font-ui text-xs leading-relaxed text-gold-pale/85">
-                  Este diseño usa la descripción, «Para quién es esto», las tarjetas de contenido, los testimonios, las
-                  preguntas frecuentes y el SEO de la colección. Aquí solo completas lo propio de este diseño:
-                  portada, imágenes, precio, archivo PDF y, si quieres, su propio video. Va siempre en la categoría de su colección.
+                  Este diseño usa «Para quién es esto», las tarjetas de contenido, los testimonios, las
+                  preguntas frecuentes y el SEO de la colección, y la descripción general se muestra una sola vez arriba.
+                  Aquí completas lo propio de este diseño: sus detalles, portada, imágenes, precio, archivo PDF y, si quieres,
+                  su propio video. Va siempre en la categoría de su colección.
                 </p>
               </>
             )}
           </div>
         )}
-      </div>
+      </FormSection>
 
-      <div className="space-y-6">
-        {mode !== "design" && (
-          <>
-            <div>
-              <label className={labelClass} htmlFor="title">
-                {mode === "collection" ? "Título de la colección" : "Título del producto"}
-              </label>
-              <input id="title" required className={inputClass} value={values.title}
-                onChange={(e) => onTitleChange(e.target.value)}
-                placeholder={mode === "collection" ? "Ej. Calendario astrológico 2027" : "Ej. Guía de efemérides 2026"} />
-            </div>
+      {mode !== "design" && (
+        <FormSection id="datos" eyebrow="Datos principales" title="Nombre y categoría">
+          <div>
+            <label className={labelClass} htmlFor="title">
+              {mode === "collection" ? "Título de la colección" : "Título del producto"}
+            </label>
+            <input id="title" required className={inputClass} value={values.title}
+              onChange={(e) => onTitleChange(e.target.value)}
+              placeholder={mode === "collection" ? "Ej. Calendario astrológico 2027" : "Ej. Guía de efemérides 2026"} />
+          </div>
 
-            <div>
-              <label className={labelClass} htmlFor="slug">Slug interno</label>
-              <input id="slug" required className={inputClass} value={values.slug}
-                onChange={(e) => { setSlugTouched(true); set("slug", slugify(e.target.value)); }} />
-            </div>
+          <div>
+            <label className={labelClass} htmlFor="slug">Slug interno</label>
+            <input id="slug" required className={inputClass} value={values.slug}
+              onChange={(e) => { setSlugTouched(true); set("slug", slugify(e.target.value)); }} />
+          </div>
 
-            <div>
-              <label className={labelClass} htmlFor="categoryId">Categoría en la tienda</label>
-              <select id="categoryId" required className={inputClass} value={values.categoryId}
-                onChange={(e) => set("categoryId", e.target.value)}>
-                <option value="" className="bg-noir-surface">Elige una categoría…</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-noir-surface">{c.label}</option>
-                ))}
-              </select>
-              <p className="mt-1.5 font-ui text-xs text-gold-dim">
-                Define en qué parte de la tienda aparece{mode === "collection" ? " (y todos sus diseños con ella)" : ""}. ¿Falta una categoría? Créala en
-                {" "}<Link href="/admin/categorias" className="underline decoration-gold underline-offset-2 hover:text-gold">Categorías</Link>.
-              </p>
-            </div>
+          <div>
+            <label className={labelClass} htmlFor="categoryId">Categoría en la tienda</label>
+            <select id="categoryId" required className={inputClass} value={values.categoryId}
+              onChange={(e) => set("categoryId", e.target.value)}>
+              <option value="" className="bg-noir-surface">Elige una categoría…</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id} className="bg-noir-surface">{c.label}</option>
+              ))}
+            </select>
+            <p className="mt-1.5 font-ui text-xs text-gold-dim">
+              Define en qué parte de la tienda aparece{mode === "collection" ? " (y todos sus diseños con ella)" : ""}. ¿Falta una categoría? Créala en
+              {" "}<Link href="/admin/categorias" className="underline decoration-gold underline-offset-2 hover:text-gold">Categorías</Link>.
+            </p>
+          </div>
+        </FormSection>
+      )}
 
-            <div>
-              <label className={labelClass} htmlFor="description">
-                {mode === "collection" ? "Descripción de la colección (la comparten todos sus diseños)" : "Descripción del producto"}
-              </label>
-              <textarea id="description" required rows={10} className={inputClass}
-                value={values.description} onChange={(e) => set("description", e.target.value)} />
-              <p className="mt-1.5 font-ui text-xs text-gold-dim">
-                En la tarjeta se ven solo las primeras líneas; en la ficha y en la página del producto se ve completa.
-                {" "}{FORMAT_HINT}
-              </p>
-              <TextPreview text={values.description} autoParagraphs />
-            </div>
+      {mode !== "design" && (
+        <FormSection
+          id="descripcion"
+          eyebrow="Texto de la ficha"
+          title={mode === "collection" ? "Descripción de la colección" : "Descripción del producto"}
+          help={
+            <>
+              {mode === "collection" && "La comparten todos sus diseños. "}
+              Se escribe con el mismo editor que los artículos: negrita, subtítulos, citas destacadas, imágenes y enlaces.
+              En la tarjeta de la tienda se ve solo el primer párrafo; en la ficha se ve completa.
+            </>
+          }
+        >
+          <div>
+            <label className={labelClass} htmlFor="description">Descripción</label>
+            <RichTextEditor
+              value={values.description}
+              onChange={(html) => set("description", html)}
+              onImageUpload={(file) => uploadFile(file, "editor")}
+            />
+          </div>
+        </FormSection>
+      )}
 
-            <div>
-              <label className={labelClass} htmlFor="audienceText">Para quién es esto</label>
-              <textarea id="audienceText" rows={8} className={inputClass}
-                value={values.audienceText}
-                onChange={(e) => set("audienceText", e.target.value)}
-                placeholder={"Este libro es para ti si:\n• Sientes que algo se está moviendo en tu vida.\n• Estás cerca de los 29, 37 o 42 años.\n• Quieres entender tu carta natal desde cero."} />
-              <p className="mt-1.5 font-ui text-xs text-gold-dim">{FORMAT_HINT}</p>
-              <TextPreview text={values.audienceText} />
-            </div>
-          </>
-        )}
+      {mode !== "design" && (
+        <FormSection
+          id="audiencia"
+          eyebrow="Texto de la ficha"
+          title="Para quién es esto"
+          help={FORMAT_HINT}
+        >
+          <div>
+            <label className={labelClass} htmlFor="audienceText">Texto</label>
+            <textarea id="audienceText" rows={8} className={inputClass}
+              value={values.audienceText}
+              onChange={(e) => set("audienceText", e.target.value)}
+              placeholder={"Este libro es para ti si:\n• Sientes que algo se está moviendo en tu vida.\n• Estás cerca de los 29, 37 o 42 años.\n• Quieres entender tu carta natal desde cero."} />
+            <TextPreview text={values.audienceText} />
+          </div>
+        </FormSection>
+      )}
 
-        {mode === "collection" && (
-          <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 font-ui text-xs leading-relaxed text-gold-pale/85">
-            Una colección no tiene precio ni PDF propios: se compran sus diseños. Guárdala y, desde la lista de productos,
-            usa «+ Agregar diseño» para cargar cada estilo o formato. Mientras no tenga al menos un diseño publicado, no se
-            muestra en la tienda.
-          </p>
-        )}
+      {mode === "collection" && (
+        <p className="rounded-lg border border-gold/20 bg-gold/5 px-4 py-3 font-ui text-xs leading-relaxed text-gold-pale/85">
+          Una colección no tiene precio ni PDF propios: se compran sus diseños. Guárdala y, desde la lista de productos,
+          usa «+ Agregar diseño» para cargar cada estilo o formato. Mientras no tenga al menos un diseño publicado, no se
+          muestra en la tienda.
+        </p>
+      )}
 
-        {mode !== "collection" && (
+      {mode !== "collection" && (
+        <FormSection
+          id="precio"
+          eyebrow="Venta"
+          title="Precio"
+          help="Es el precio que se publica en la web. Con Mercado Pago se cobra en pesos, al dólar blue del día más el margen; con PayPal se cobra en dólares."
+        >
           <div>
             <label className={labelClass} htmlFor="priceUsd">Precio en dólares (USD)</label>
             <input id="priceUsd" type="number" min={0} step="0.01" className={`${inputClass} sm:max-w-xs`}
@@ -376,74 +435,65 @@ export function ProductForm({
               onChange={(e) => set("priceUsd", e.target.value === "" ? null : Number(e.target.value))}
               placeholder="Ej. 9.99" />
             <p className="mt-1.5 font-ui text-xs text-gold-dim">
-              Es el precio que se publica en la web. Con Mercado Pago se cobra en pesos, al dólar blue del día
-              más el margen; con PayPal se cobra en dólares. Dejalo vacío si el producto no se vende como PDF.
+              Déjalo vacío si el producto no se vende como PDF.
             </p>
           </div>
-        )}
 
-        {mode === "single" && (
+          {mode === "single" && (
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className={labelClass} htmlFor="priceLabel">Texto del precio (opcional)</label>
+                <input id="priceLabel" className={inputClass} value={values.priceLabel}
+                  onChange={(e) => set("priceLabel", e.target.value)} placeholder="Si lo dejas vacío se arma solo con el precio en USD" />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="lemonVariantId">Variant ID de Lemon Squeezy</label>
+                <input id="lemonVariantId" className={inputClass} value={values.lemonVariantId}
+                  onChange={(e) => set("lemonVariantId", e.target.value)}
+                  placeholder="Todavía no usamos Lemon Squeezy en la tienda" />
+              </div>
+            </div>
+          )}
+        </FormSection>
+      )}
+
+      {mode !== "collection" && (
+        <FormSection
+          id="amazon"
+          eyebrow="Venta"
+          title="Venta en Amazon (opcional)"
+          help="Si el libro también se vende en Amazon, completa los links y los precios que se muestran. Déjalos vacíos si no aplica."
+        >
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
-              <label className={labelClass} htmlFor="priceLabel">Texto del precio (opcional)</label>
-              <input id="priceLabel" className={inputClass} value={values.priceLabel}
-                onChange={(e) => set("priceLabel", e.target.value)} placeholder="Si lo dejas vacío se arma solo con el precio en USD" />
+              <label className={labelClass} htmlFor="amazonKindleUrl">Link Kindle (versión digital)</label>
+              <input id="amazonKindleUrl" className={inputClass} value={values.amazonKindleUrl}
+                onChange={(e) => set("amazonKindleUrl", e.target.value)}
+                placeholder="https://www.amazon.com/dp/tu-ebook" />
             </div>
             <div>
-              <label className={labelClass} htmlFor="lemonVariantId">Variant ID de Lemon Squeezy</label>
-              <input id="lemonVariantId" className={inputClass} value={values.lemonVariantId}
-                onChange={(e) => set("lemonVariantId", e.target.value)}
-                placeholder="Todavía no usamos Lemon Squeezy en la tienda" />
+              <label className={labelClass} htmlFor="amazonKindlePrice">Precio a mostrar (Kindle)</label>
+              <input id="amazonKindlePrice" className={inputClass} value={values.amazonKindlePrice}
+                onChange={(e) => set("amazonKindlePrice", e.target.value)}
+                placeholder="Ej. €5,99" />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="amazonPaperbackUrl">Link tapa blanda (libro físico)</label>
+              <input id="amazonPaperbackUrl" className={inputClass} value={values.amazonPaperbackUrl}
+                onChange={(e) => set("amazonPaperbackUrl", e.target.value)}
+                placeholder="https://www.amazon.com/dp/tu-libro-fisico" />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="amazonPaperbackPrice">Precio a mostrar (tapa blanda)</label>
+              <input id="amazonPaperbackPrice" className={inputClass} value={values.amazonPaperbackPrice}
+                onChange={(e) => set("amazonPaperbackPrice", e.target.value)}
+                placeholder="Ej. USD 14,99" />
             </div>
           </div>
-        )}
+        </FormSection>
+      )}
 
-        {mode !== "collection" && (
-          <>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <label className={labelClass} htmlFor="amazonKindleUrl">Link Kindle (versión digital) en Amazon</label>
-                <input id="amazonKindleUrl" className={inputClass} value={values.amazonKindleUrl}
-                  onChange={(e) => set("amazonKindleUrl", e.target.value)}
-                  placeholder="https://www.amazon.com/dp/tu-ebook" />
-              </div>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <label className={labelClass} htmlFor="amazonKindlePrice">Precio a mostrar (Kindle)</label>
-                <input id="amazonKindlePrice" className={inputClass} value={values.amazonKindlePrice}
-                  onChange={(e) => set("amazonKindlePrice", e.target.value)}
-                  placeholder="Ej. €5,99" />
-                <p className="mt-1.5 font-ui text-xs text-gold-dim">
-                  Dejalo vacío si no vendés la versión Kindle en Amazon.
-                </p>
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="amazonPaperbackUrl">Link tapa blanda (libro físico) en Amazon</label>
-                <input id="amazonPaperbackUrl" className={inputClass} value={values.amazonPaperbackUrl}
-                  onChange={(e) => set("amazonPaperbackUrl", e.target.value)}
-                  placeholder="https://www.amazon.com/dp/tu-libro-fisico" />
-              </div>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <label className={labelClass} htmlFor="amazonPaperbackPrice">Precio a mostrar (tapa blanda)</label>
-                <input id="amazonPaperbackPrice" className={inputClass} value={values.amazonPaperbackPrice}
-                  onChange={(e) => set("amazonPaperbackPrice", e.target.value)}
-                  placeholder="Ej. USD 14,99" />
-                <p className="mt-1.5 font-ui text-xs text-gold-dim">
-                  Dejalo vacío si no vendés la versión impresa en Amazon.
-                </p>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Imagen de la tarjeta (cuadrada, la primera que ve el usuario)</p>
+      <FormSection id="img-tarjeta" eyebrow="Imágenes" title="Imagen de la tarjeta" help="Cuadrada: es la primera que ve el usuario en la tienda.">
         <div className="flex items-center gap-3">
           <input className={inputClass} value={values.coverImage}
             onChange={(e) => set("coverImage", e.target.value)} placeholder="URL de la imagen" />
@@ -455,6 +505,7 @@ export function ProductForm({
         {values.coverImage && (
           <div>
             <div className="h-40 w-full max-w-xs overflow-hidden rounded-lg border border-gold/20 bg-noir-surface2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={values.coverImage} alt="Vista previa" className="h-full w-full object-cover"
                 style={{ objectPosition: `center ${values.coverImagePosition}%` }} />
             </div>
@@ -464,10 +515,9 @@ export function ProductForm({
               className="w-full max-w-xs accent-gold" />
           </div>
         )}
-      </div>
+      </FormSection>
 
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Imagen grande (para la ficha completa del producto)</p>
+      <FormSection id="img-grande" eyebrow="Imágenes" title="Imagen grande" help="Para la ficha completa del producto.">
         <div className="flex items-center gap-3">
           <input className={inputClass} value={values.heroImage}
             onChange={(e) => set("heroImage", e.target.value)} placeholder="URL de la imagen" />
@@ -479,6 +529,7 @@ export function ProductForm({
         {values.heroImage && (
           <div>
             <div className="h-52 w-full max-w-md overflow-hidden rounded-lg border border-gold/20 bg-noir-surface2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={values.heroImage} alt="Vista previa" className="h-full w-full object-cover"
                 style={{ objectPosition: `center ${values.heroImagePosition}%` }} />
             </div>
@@ -488,18 +539,21 @@ export function ProductForm({
               className="w-full max-w-md accent-gold" />
           </div>
         )}
-      </div>
+      </FormSection>
 
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Capturas del interior del PDF (3-4 recomendadas)</p>
-        <p className="font-ui text-xs text-gold-dim">Páginas reales del manual, no la tapa — le muestran al comprador qué va a encontrar adentro.</p>
-
+      <FormSection
+        id="capturas"
+        eyebrow="Imágenes"
+        title="Capturas del interior del PDF"
+        help="3 o 4 recomendadas. Páginas reales del manual, no la tapa: le muestran al comprador qué va a encontrar adentro."
+      >
         {values.galleryImages.length > 0 && (
           <div className="flex flex-wrap gap-3">
             {values.galleryImages.map((url, i) => (
               <div key={i} className="relative h-24 w-24 overflow-hidden rounded-lg border border-gold/20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt={`Captura ${i + 1}`} className="h-full w-full object-cover" />
-                <button type="button" onClick={() => removeGalleryImage(i)}
+                <button type="button" onClick={() => removeGalleryImage(i)} aria-label={`Quitar la captura ${i + 1}`}
                   className="absolute right-1 top-1 rounded-full bg-noir-bg/80 px-1.5 py-0.5 text-xs text-gold-pale hover:bg-wine/80">
                   ✕
                 </button>
@@ -508,95 +562,97 @@ export function ProductForm({
           </div>
         )}
 
-        <label className={uploadBtnClass}>
-          {uploading === "gallery" ? "Subiendo…" : "+ Agregar captura"}
-          <input type="file" accept="image/*" className="hidden" onChange={onGalleryFileChange} />
-        </label>
-      </div>
+        <div>
+          <label className={uploadBtnClass + " inline-block"}>
+            {uploading === "gallery" ? "Subiendo…" : "+ Agregar captura"}
+            <input type="file" accept="image/*" className="hidden" onChange={onGalleryFileChange} />
+          </label>
+        </div>
+      </FormSection>
 
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">
-          {mode === "design" ? "Video de este diseño (opcional)" : "Video de presentación (opcional)"}
-        </p>
-        <p className="font-ui text-xs text-gold-dim">
-          {mode === "design"
-            ? "Se muestra en la ficha cuando la compradora elige este diseño, debajo de la portada y los botones de compra, con el título «Mira la presentación». Si no cargas un video, se muestra el de la colección (si tiene uno)."
+      <FormSection
+        id="video"
+        eyebrow="Video"
+        title={mode === "design" ? "Video de este diseño (opcional)" : "Video de presentación (opcional)"}
+        help={
+          mode === "design"
+            ? "Se muestra en la ficha de este diseño, con el título «Mira este diseño». Si no cargas un video, esa sección no aparece en su ficha."
             : mode === "collection"
-              ? "Se muestra en la ficha, debajo de la portada y los botones de compra, con el título «Mira la presentación». Lo usan los diseños que no tengan su propio video. Si no cargas un video, esa sección no aparece."
-              : "Se muestra en la ficha pública del producto, debajo de la portada y los botones de compra, con el título «Mira la presentación». Si no cargas un video, esa sección no aparece."}
-        </p>
+              ? "Se muestra en la ficha de la colección, debajo de la portada, con el título «Mira la presentación». Si no cargas un video, esa sección no aparece."
+              : "Se muestra en la ficha pública del producto, debajo de la portada y los botones de compra, con el título «Mira la presentación». Si no cargas un video, esa sección no aparece."
+        }
+      >
         <VideoUploadField value={values.videoUrl} onChange={(url) => set("videoUrl", url)} onBusyChange={setVideoBusy} />
-      </div>
+      </FormSection>
 
       {mode !== "design" && (
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Qué vas a recibir (tarjetas de contenido)</p>
-        <p className="font-ui text-xs text-gold-dim">
-          Cada tarjeta se ve completa en la ficha, una al lado de la otra. {FORMAT_HINT}
-        </p>
-
-        {values.contentHighlights.map((h, i) => (
-          <div key={i} className="space-y-2 rounded-lg border border-gold/15 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">Tarjeta {i + 1}</span>
-              <button type="button" onClick={() => removeHighlight(i)} className={removeBtnClass}>Quitar</button>
+        <FormSection
+          id="tarjetas"
+          eyebrow="Texto de la ficha"
+          title="Qué vas a recibir (tarjetas de contenido)"
+          help={<>Cada tarjeta se ve completa en la ficha, una al lado de la otra. {FORMAT_HINT}</>}
+        >
+          {values.contentHighlights.map((h, i) => (
+            <div key={i} className="space-y-2 rounded-xl border-2 border-gold/35 bg-noir-bg p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-ui text-sm font-semibold text-gold-pale">Tarjeta {i + 1}</span>
+                <button type="button" onClick={() => removeHighlight(i)} className={removeBtnClass}>Quitar</button>
+              </div>
+              <input className={inputClass} placeholder="Título, ej. Orientación junguiana"
+                value={h.title} onChange={(e) => updateHighlight(i, "title", e.target.value)} />
+              <textarea className={inputClass} rows={6} placeholder={"Descripción. Para una lista, una línea por ítem:\n• Primer punto\n• Segundo punto"}
+                value={h.description} onChange={(e) => updateHighlight(i, "description", e.target.value)} />
+              <TextPreview text={h.description} />
             </div>
-            <input className={inputClass} placeholder="Título, ej. Orientación junguiana"
-              value={h.title} onChange={(e) => updateHighlight(i, "title", e.target.value)} />
-            <textarea className={inputClass} rows={6} placeholder={"Descripción. Para una lista, una línea por ítem:\n• Primer punto\n• Segundo punto"}
-              value={h.description} onChange={(e) => updateHighlight(i, "description", e.target.value)} />
-            <TextPreview text={h.description} />
-          </div>
-        ))}
+          ))}
 
-        <button type="button" onClick={addHighlight} className={addBtnClass}>+ Agregar tarjeta de contenido</button>
-      </div>
+          <button type="button" onClick={addHighlight} className={addBtnClass}>+ Agregar tarjeta de contenido</button>
+        </FormSection>
       )}
 
       {mode !== "design" && (
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Lo que dicen quienes ya lo leyeron (testimonios)</p>
-        <p className="font-ui text-xs text-gold-dim">
-          Se muestran como carrusel de tarjetas que se deslizan solas, entre "Para quién es esto" y "Qué vas a recibir".
-          Pegá el comentario tal cual te lo mandó la persona — hay lugar de sobra para textos largos.
-        </p>
-
-        {values.testimonials.map((t, i) => (
-          <div key={i} className="space-y-3 rounded-lg border border-gold/15 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-ui text-xs uppercase tracking-wide text-gold-dim">Testimonio {i + 1}</span>
-              <button type="button" onClick={() => removeTestimonial(i)} className={removeBtnClass}>Quitar</button>
+        <FormSection
+          id="testimonios"
+          eyebrow="Prueba social"
+          title="Testimonios"
+          help="Lo que dicen quienes ya lo leyeron. Se muestran como carrusel de tarjetas que se deslizan solas, entre «Para quién es esto» y «Qué vas a recibir». Pega el comentario tal cual te lo mandó la persona: hay lugar de sobra para textos largos."
+        >
+          {values.testimonials.map((t, i) => (
+            <div key={i} className="space-y-3 rounded-xl border-2 border-gold/35 bg-noir-bg p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-ui text-sm font-semibold text-gold-pale">Testimonio {i + 1}</span>
+                <button type="button" onClick={() => removeTestimonial(i)} className={removeBtnClass}>Quitar</button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+                <input className={inputClass} placeholder="Nombre y apellido, o apodo"
+                  value={t.name} onChange={(e) => updateTestimonial(i, "name", e.target.value)} />
+                <select className={inputClass} value={t.stars}
+                  onChange={(e) => updateTestimonial(i, "stars", Number(e.target.value))}>
+                  {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} ★</option>)}
+                </select>
+                <input type="number" min={0} className={inputClass} placeholder="Compartido X veces"
+                  value={t.shared} onChange={(e) => updateTestimonial(i, "shared", Number(e.target.value))} />
+              </div>
+              <textarea className={inputClass} rows={10}
+                placeholder="Texto completo del comentario: cómo se conectó con los ejercicios, qué aprendió de astrología, qué tan interesante le resultó todo…"
+                value={t.text} onChange={(e) => updateTestimonial(i, "text", e.target.value)} />
             </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-              <input className={inputClass} placeholder="Nombre y apellido, o apodo"
-                value={t.name} onChange={(e) => updateTestimonial(i, "name", e.target.value)} />
-              <select className={inputClass} value={t.stars}
-                onChange={(e) => updateTestimonial(i, "stars", Number(e.target.value))}>
-                {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} ★</option>)}
-              </select>
-              <input type="number" min={0} className={inputClass} placeholder="Compartido X veces"
-                value={t.shared} onChange={(e) => updateTestimonial(i, "shared", Number(e.target.value))} />
-            </div>
-            <textarea className={inputClass} rows={10}
-              placeholder="Texto completo del comentario: cómo se conectó con los ejercicios, qué aprendió de astrología, qué tan interesante le resultó todo…"
-              value={t.text} onChange={(e) => updateTestimonial(i, "text", e.target.value)} />
-          </div>
-        ))}
+          ))}
 
-        <button type="button" onClick={addTestimonial} className={addBtnClass}>+ Agregar testimonio</button>
-      </div>
+          <button type="button" onClick={addTestimonial} className={addBtnClass}>+ Agregar testimonio</button>
+        </FormSection>
       )}
 
-      <div className={sectionClass}>
-        <p className="font-display text-sm text-gold-pale">Cantidad de ventas (prueba social)</p>
-        <p className="font-ui text-xs text-gold-dim">
-          Se muestra como un cartel ancho debajo de los botones de compra: "X personas ya lo compraron".
-          Es un número manual, no se calcula solo — dejalo vacío para que ese cartel no aparezca.
-        </p>
-        <input type="number" min={0} className={inputClass} placeholder="Ej. 128"
+      <FormSection
+        id="ventas"
+        eyebrow="Prueba social"
+        title="Cantidad de ventas"
+        help="Se muestra como un cartel ancho debajo de los botones de compra: «X personas ya lo compraron». Es un número manual, no se calcula solo. Déjalo vacío para que ese cartel no aparezca."
+      >
+        <input type="number" min={0} className={`${inputClass} sm:max-w-xs`} placeholder="Ej. 128" aria-label="Cantidad de ventas"
           value={values.salesCount ?? ""}
           onChange={(e) => set("salesCount", e.target.value === "" ? null : Number(e.target.value))} />
-      </div>
+      </FormSection>
 
       {mode !== "design" && (
         <ProductSeoSection
@@ -608,35 +664,39 @@ export function ProductForm({
       )}
 
       {mode !== "collection" && (
-      <div>
-        <label className={labelClass}>Archivo PDF</label>
-        <div className="flex items-center gap-3">
-          <input id="fileUrl" className={inputClass} value={values.fileUrl}
-            onChange={(e) => set("fileUrl", e.target.value)}
-            placeholder="Se completa al subir el PDF, o pegá la URL manualmente" />
-          <label className={uploadBtnClass}>
-            {uploading === "pdf" ? "Subiendo…" : "Subir PDF"}
-            <input type="file" accept="application/pdf" className="hidden" onChange={onPdfFileChange} />
-          </label>
-        </div>
-        <p className="mt-1.5 font-ui text-xs text-gold-dim">
-          Este archivo solo se muestra a quien ya compró el producto (se valida por email en /tienda).
-        </p>
-      </div>
+        <FormSection
+          id="pdf"
+          eyebrow="Archivo"
+          title="Archivo PDF"
+          help="Este archivo solo se muestra a quien ya compró el producto (se valida por email en /tienda)."
+        >
+          <div className="flex items-center gap-3">
+            <input id="fileUrl" className={inputClass} value={values.fileUrl}
+              onChange={(e) => set("fileUrl", e.target.value)}
+              aria-label="Dirección del archivo PDF"
+              placeholder="Se completa al subir el PDF, o pega la URL manualmente" />
+            <label className={uploadBtnClass}>
+              {uploading === "pdf" ? "Subiendo…" : "Subir PDF"}
+              <input type="file" accept="application/pdf" className="hidden" onChange={onPdfFileChange} />
+            </label>
+          </div>
+        </FormSection>
       )}
 
-      <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
-        <input type="checkbox" checked={values.published}
-          onChange={(e) => set("published", e.target.checked)} className="h-4 w-4 accent-gold" />
-        Publicado (visible en /tienda)
-      </label>
+      <FormSection id="publicar" eyebrow="Para terminar" title="Publicación">
+        <label className="flex items-center gap-2 font-ui text-sm text-gold-pale/85">
+          <input type="checkbox" checked={values.published}
+            onChange={(e) => set("published", e.target.checked)} className="h-4 w-4 accent-gold" />
+          Publicado (visible en /tienda)
+        </label>
 
-      <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={saving || videoBusy}
-          className="focus-ring rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60">
-          {saving ? "Guardando…" : videoBusy ? "Subiendo el video…" : isEditing ? "Guardar cambios" : "Crear producto"}
-        </button>
-      </div>
+        <div className="flex gap-3">
+          <button type="submit" disabled={saving || videoBusy}
+            className="focus-ring rounded-full bg-gold px-6 py-2.5 font-ui text-sm font-medium uppercase tracking-wide text-noir-bg transition hover:bg-gold-bright disabled:opacity-60">
+            {saving ? "Guardando…" : videoBusy ? "Subiendo el video…" : isEditing ? "Guardar cambios" : "Crear producto"}
+          </button>
+        </div>
+      </FormSection>
     </form>
   );
 }
