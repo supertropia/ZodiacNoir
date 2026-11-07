@@ -9,6 +9,7 @@ import { ProductMiniCard } from "@/components/store/ProductMiniCard";
 import { toPlainText } from "@/components/store/FormattedText";
 import { toProductViewModel } from "@/lib/store-products";
 import { listPriceUsd } from "@/lib/store-designs";
+import { MAX_RELATED, priceTextFor, type RelatedItem } from "@/lib/related-products";
 import { categoryHref, getVisibleCategoryChain } from "@/lib/store-categories";
 import { TRACKING_PARAMS } from "@/lib/traffic-sources";
 import { buildProductJsonLd, summarize } from "@/lib/product-seo";
@@ -140,6 +141,34 @@ export default async function ProductPage({
     };
   });
 
+  // «Productos relacionados»: otros productos publicados de la misma categoría (sin diseños sueltos ni colecciones vacías).
+  const relatedRows = product.categoryId
+    ? await safeQuery(() =>
+        prisma.product.findMany({
+          where: {
+            published: true,
+            parentId: null,
+            categoryId: product.categoryId,
+            NOT: { id: product.id },
+            OR: [{ isCollection: false }, { designs: { some: { published: true } } }],
+          },
+          orderBy: { createdAt: "desc" },
+          take: MAX_RELATED,
+          include: { designs: { where: { published: true }, orderBy: { createdAt: "asc" } } },
+        })
+      )
+    : [];
+  const related: RelatedItem[] = relatedRows.map((row) => {
+    const firstRelatedDesign = row.designs[0];
+    return {
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      image: row.coverImage ?? row.heroImage ?? firstRelatedDesign?.coverImage ?? firstRelatedDesign?.heroImage ?? null,
+      priceText: priceTextFor({ priceUsd: row.priceUsd, designs: row.designs.map((d) => ({ priceUsd: d.priceUsd })) }),
+    };
+  });
+
   const designPrices = designs.map((d) => d.priceUsd).filter((p): p is number => typeof p === "number" && p > 0);
   const lowPrice = product.isCollection ? (designPrices.length > 0 ? Math.min(...designPrices) : null) : product.priceUsd;
   const firstDesign = designs[0];
@@ -186,7 +215,7 @@ export default async function ProductPage({
       </nav>
 
       <article className="mt-6 rounded-2xl border border-gold/25 bg-noir-surface p-6 sm:p-10">
-        <ProductDetail product={view} titleAs="h1" shareUrl={url} initialDesignSlug={searchParams?.diseno ?? null} />
+        <ProductDetail product={view} titleAs="h1" shareUrl={url} initialDesignSlug={searchParams?.diseno ?? null} related={related} />
       </article>
 
       {othersCards.length > 0 && (
