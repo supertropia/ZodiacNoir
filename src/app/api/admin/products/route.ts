@@ -6,6 +6,9 @@ import { formatUsdAmount, parseUsdInput } from "@/lib/pricing";
 import { parseOptionalUrl } from "@/lib/media";
 import { slugify } from "@/lib/slugify";
 import { resolveProductOrganization } from "@/lib/product-organization";
+import { sanitizeArticleHtml } from "@/lib/sanitize-html";
+import { looksLikeHtml } from "@/lib/html-text";
+import { isDescriptionEmpty } from "@/lib/product-description";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -47,7 +50,13 @@ export async function POST(req: Request) {
     const finalTitle =
       (typeof title === "string" ? title.trim() : "") || (isDesign ? `${org.parent!.title} · ${org.data.variantLabel}` : "");
     const finalSlug = (typeof slug === "string" ? slug.trim() : "") || slugify(finalTitle);
-    const finalDescription = typeof description === "string" ? description : "";
+    // La descripción puede venir del editor visual (HTML): se limpia antes de guardarla. Un editor vacío cuenta como sin texto.
+    const rawDescription = typeof description === "string" ? description : "";
+    const finalDescription = looksLikeHtml(rawDescription)
+      ? isDescriptionEmpty(rawDescription)
+        ? ""
+        : sanitizeArticleHtml(rawDescription)
+      : rawDescription;
 
     if (!finalSlug || !finalTitle) {
       return NextResponse.json({ error: "Faltan campos obligatorios (revisa el título y el slug)." }, { status: 400 });
