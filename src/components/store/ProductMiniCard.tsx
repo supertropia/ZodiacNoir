@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatUsdAmount } from "@/lib/pricing";
+import { htmlToLines, looksLikeHtml } from "@/lib/html-text";
 
 export type ProductCardData = {
   id: string;
@@ -13,7 +14,8 @@ export type ProductCardData = {
 };
 
 /** Primer párrafo de la descripción, cortado en una palabra entera y cerrado con puntos suspensivos. */
-function shortDescription(text: string, max = 140): string {
+function shortDescription(raw: string, max = 140): string {
+  const text = looksLikeHtml(raw) ? htmlToLines(raw) : raw;
   const firstParagraph =
     text
       .split(/\n+/)
