@@ -104,7 +104,7 @@ export function MembershipCheckoutButton({
             body={{ planId }}
             visibility={paypal}
             label="Suscribirme con PayPal"
-            className="focus-ring w-full rounded-full bg-[#FFC439] px-6 py-3 text-center font-ui text-sm font-semibold text-[#111111] transition hover:bg-[#F2B72D] disabled:opacity-60"
+            className="focus-ring w-full min-h-[3.75rem] rounded-full bg-[#7CCBF2] px-6 py-3 text-center font-ui text-sm font-semibold text-[#0B2A4A] transition hover:bg-[#62BDEA] disabled:opacity-60"
           />
         </div>
       )}
